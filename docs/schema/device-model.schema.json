@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:imgvec:schema:device-model:1.0",
+  "title": "device-model/1.0 — 장치 모델 (본체·접속점·외형 도형)",
+  "description": "imgvec이 그림에서 만든 중간 데이터. 좌표계: 원점 = 본체 왼쪽 위 모서리, x 오른쪽, y 아래(DNCAD·SVG·이미지와 같음), 단위 mm. 접속점의 (x, y)는 본체 경계 위의 부착점이고 원본 그림에서 보인 위치는 src에 둔다.",
+  "type": "object",
+  "required": ["schema", "name", "body", "pins"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "type": "string", "pattern": "^device-model/1\\.", "description": "형식 이름과 버전. 1.x는 서로 읽을 수 있다." },
+    "name": { "type": "string", "description": "장치 이름(파일 이름 등). 비어 있으면 검증에서 경고." },
+    "unit": { "const": "mm" },
+    "coords": { "type": "string", "description": "사람이 읽는 좌표계 설명(읽을 때는 쓰지 않음)." },
+    "body": { "$ref": "#/$defs/body" },
+    "pins": { "type": "array", "items": { "$ref": "#/$defs/pin" }, "description": "장치 접속점. 비어 있으면 검증 오류(E-NOPIN)." },
+    "graphics": { "type": "array", "items": { "$ref": "#/$defs/primitive" }, "description": "외형 도형(선·호·원·경로). 좌표는 본체 기준 mm." },
+    "texts": { "type": "array", "items": { "$ref": "#/$defs/text" } },
+    "meta": { "type": "object", "description": "만든 도구 버전, 원본 그림, 축척 근거, 벡터화 품질 등 출처 기록." }
+  },
+  "$defs": {
+    "point": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+    "body": {
+      "type": "object",
+      "required": ["w", "h"],
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "type": "string", "default": "rect", "description": "rect만 DNCAD 블랙박스로 확인됨. 그 밖의 값은 경고(W-SHAPE)." },
+        "w": { "type": "number", "exclusiveMinimum": 0, "description": "가로 mm" },
+        "h": { "type": "number", "exclusiveMinimum": 0, "description": "세로 mm" }
+      }
+    },
+    "pin": {
+      "type": "object",
+      "required": ["name", "side", "x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "description": "DNCAD 'designation'. 한 장치 안에서 유일해야 함(E-DUP)." },
+        "side": { "enum": ["top", "bottom", "left", "right"], "description": "붙은 변. DNCAD에서 확인된 것은 top·bottom뿐." },
+        "x": { "type": "number", "description": "본체 경계 위 부착점 x (mm)" },
+        "y": { "type": "number", "description": "본체 경계 위 부착점 y (mm)" },
+        "kind": { "type": "string", "default": "electrical", "description": "DNCAD cp_type" },
+        "label": { "type": "string", "description": "보조 설명" },
+        "group": { "type": "string", "description": "단자열 이름(예: P3·P4). 배치 순서를 정하는 데 쓰임." },
+        "src": { "$ref": "#/$defs/point", "description": "원본 그림에서 보인 위치(mm, 본체 기준). 부착점과 다를 수 있음." }
+      }
+    },
+    "text": {
+      "type": "object",
+      "required": ["value", "x", "y"],
+      "additionalProperties": false,
+      "properties": {
+        "value": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "height": { "type": "number", "exclusiveMinimum": 0, "default": 2.5 },
+        "rotation": { "type": "number", "default": 0 }
+      }
+    },
+    "segment": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "p0", "p1"],
+          "additionalProperties": false,
+          "properties": { "type": { "const": "line" }, "p0": { "$ref": "#/$defs/point" }, "p1": { "$ref": "#/$defs/point" } }
+        },
+        {
+          "type": "object",
+          "required": ["type", "c", "r", "a0", "a1"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "arc" },
+            "c": { "$ref": "#/$defs/point" },
+            "r": { "type": "number", "exclusiveMinimum": 0 },
+            "a0": { "type": "number", "description": "시작 각도(라디안). 점 = (cx + r·cos a, cy + r·sin a). y가 아래이므로 각도가 커지는 쪽이 화면에서는 시계 방향." },
+            "a1": { "type": "number", "description": "끝 각도(라디안). 호는 a0에서 a1까지 가며 부호 있는 각도 a1 − a0이 진행 방향이다." }
+          }
+        }
+      ]
+    },
+    "primitive": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "c", "r"],
+          "additionalProperties": false,
+          "properties": { "type": { "const": "circle" }, "c": { "$ref": "#/$defs/point" }, "r": { "type": "number", "exclusiveMinimum": 0 } }
+        },
+        {
+          "type": "object",
+          "required": ["type", "segs"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "const": "path" },
+            "closed": { "type": "boolean", "default": false },
+            "segs": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/segment" } }
+          }
+        }
+      ]
+    }
+  }
+}

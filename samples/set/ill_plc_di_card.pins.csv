@@ -1,0 +1,17 @@
+﻿name,side,offset_mm,x_mm,y_mm,x_px,y_px,kind,label,group
+DI0,top,,,,156,148,,,DI-A
+DI1,top,,,,236,148,,,DI-A
+DI2,top,,,,316,148,,,DI-A
+DI3,top,,,,396,148,,,DI-A
+DI4,top,,,,476,148,,,DI-A
+DI5,top,,,,556,148,,,DI-A
+DI6,top,,,,636,148,,,DI-A
+DI7,top,,,,716,148,,,DI-A
+DI8,bottom,,,,156,1452,,,DI-B
+DI9,bottom,,,,236,1452,,,DI-B
+DI10,bottom,,,,316,1452,,,DI-B
+DI11,bottom,,,,396,1452,,,DI-B
+DI12,bottom,,,,476,1452,,,DI-B
+DI13,bottom,,,,556,1452,,,DI-B
+DI14,bottom,,,,636,1452,,,DI-B
+COM,bottom,,,,716,1452,,,DI-B

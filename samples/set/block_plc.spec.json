@@ -1,0 +1,114 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "block_plc",
+ "image": "block_plc.png",
+ "scale": {
+  "mm_per_px": 0.08
+ },
+ "body_px": [
+  425.0,
+  325.0,
+  1325.0,
+  800.0
+ ],
+ "preset": "lineart",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "I0",
+   "side": "top",
+   "x_px": 525.0,
+   "y_px": 212.5
+  },
+  {
+   "name": "I1",
+   "side": "top",
+   "x_px": 625.0,
+   "y_px": 212.5
+  },
+  {
+   "name": "I2",
+   "side": "top",
+   "x_px": 725.0,
+   "y_px": 212.5
+  },
+  {
+   "name": "I3",
+   "side": "top",
+   "x_px": 825.0,
+   "y_px": 212.5
+  },
+  {
+   "name": "I4",
+   "side": "top",
+   "x_px": 925.0,
+   "y_px": 212.5
+  },
+  {
+   "name": "I5",
+   "side": "top",
+   "x_px": 1025.0,
+   "y_px": 212.5
+  },
+  {
+   "name": "I6",
+   "side": "top",
+   "x_px": 1125.0,
+   "y_px": 212.5
+  },
+  {
+   "name": "I7",
+   "side": "top",
+   "x_px": 1225.0,
+   "y_px": 212.5
+  },
+  {
+   "name": "Q0",
+   "side": "bottom",
+   "x_px": 525.0,
+   "y_px": 912.5
+  },
+  {
+   "name": "Q1",
+   "side": "bottom",
+   "x_px": 625.0,
+   "y_px": 912.5
+  },
+  {
+   "name": "Q2",
+   "side": "bottom",
+   "x_px": 725.0,
+   "y_px": 912.5
+  },
+  {
+   "name": "Q3",
+   "side": "bottom",
+   "x_px": 825.0,
+   "y_px": 912.5
+  },
+  {
+   "name": "Q4",
+   "side": "bottom",
+   "x_px": 925.0,
+   "y_px": 912.5
+  },
+  {
+   "name": "Q5",
+   "side": "bottom",
+   "x_px": 1025.0,
+   "y_px": 912.5
+  },
+  {
+   "name": "Q6",
+   "side": "bottom",
+   "x_px": 1125.0,
+   "y_px": 912.5
+  },
+  {
+   "name": "Q7",
+   "side": "bottom",
+   "x_px": 1225.0,
+   "y_px": 912.5
+  }
+ ]
+}

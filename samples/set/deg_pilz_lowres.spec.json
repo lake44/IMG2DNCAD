@@ -1,0 +1,179 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "deg_pilz_lowres",
+ "image": "deg_pilz_lowres.jpg",
+ "scale": {
+  "body_width_mm": 45.0
+ },
+ "body_px": [
+  154.0,
+  4.0,
+  445.0,
+  596.0
+ ],
+ "preset": "illustration",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "A1",
+   "side": "top",
+   "x_px": 190.55,
+   "y_px": 43.0,
+   "group": "P3"
+  },
+  {
+   "name": "S31",
+   "side": "top",
+   "x_px": 252.85,
+   "y_px": 43.0,
+   "group": "P3"
+  },
+  {
+   "name": "S32",
+   "side": "top",
+   "x_px": 284.0,
+   "y_px": 43.0,
+   "group": "P3"
+  },
+  {
+   "name": "13",
+   "side": "top",
+   "x_px": 315.15,
+   "y_px": 43.0,
+   "group": "P3"
+  },
+  {
+   "name": "23",
+   "side": "top",
+   "x_px": 346.3,
+   "y_px": 43.0,
+   "group": "P3"
+  },
+  {
+   "name": "33",
+   "side": "top",
+   "x_px": 377.45,
+   "y_px": 43.0,
+   "group": "P3"
+  },
+  {
+   "name": "41",
+   "side": "top",
+   "x_px": 408.6,
+   "y_px": 43.0,
+   "group": "P3"
+  },
+  {
+   "name": "S11",
+   "side": "top",
+   "x_px": 187.5,
+   "y_px": 106.5,
+   "group": "P4"
+  },
+  {
+   "name": "S12",
+   "side": "top",
+   "x_px": 219.75,
+   "y_px": 106.5,
+   "group": "P4"
+  },
+  {
+   "name": "S13",
+   "side": "top",
+   "x_px": 252.0,
+   "y_px": 106.5,
+   "group": "P4"
+  },
+  {
+   "name": "S14",
+   "side": "top",
+   "x_px": 284.25,
+   "y_px": 106.5,
+   "group": "P4"
+  },
+  {
+   "name": "S21",
+   "side": "top",
+   "x_px": 316.5,
+   "y_px": 106.5,
+   "group": "P4"
+  },
+  {
+   "name": "S22",
+   "side": "top",
+   "x_px": 348.75,
+   "y_px": 106.5,
+   "group": "P4"
+  },
+  {
+   "name": "S33",
+   "side": "top",
+   "x_px": 381.0,
+   "y_px": 106.5,
+   "group": "P4"
+  },
+  {
+   "name": "S34",
+   "side": "top",
+   "x_px": 413.25,
+   "y_px": 106.5,
+   "group": "P4"
+  },
+  {
+   "name": "A2",
+   "side": "bottom",
+   "x_px": 192.5,
+   "y_px": 565.0,
+   "group": "P4b"
+  },
+  {
+   "name": "Y30",
+   "side": "bottom",
+   "x_px": 223.65,
+   "y_px": 565.0,
+   "group": "P4b"
+  },
+  {
+   "name": "Y31",
+   "side": "bottom",
+   "x_px": 254.8,
+   "y_px": 565.0,
+   "group": "P4b"
+  },
+  {
+   "name": "Y32",
+   "side": "bottom",
+   "x_px": 285.95,
+   "y_px": 565.0,
+   "group": "P4b"
+  },
+  {
+   "name": "14",
+   "side": "bottom",
+   "x_px": 317.1,
+   "y_px": 565.0,
+   "group": "P4b"
+  },
+  {
+   "name": "24",
+   "side": "bottom",
+   "x_px": 348.25,
+   "y_px": 565.0,
+   "group": "P4b"
+  },
+  {
+   "name": "34",
+   "side": "bottom",
+   "x_px": 379.4,
+   "y_px": 565.0,
+   "group": "P4b"
+  },
+  {
+   "name": "42",
+   "side": "bottom",
+   "x_px": 410.55,
+   "y_px": 565.0,
+   "group": "P4b"
+  }
+ ]
+}

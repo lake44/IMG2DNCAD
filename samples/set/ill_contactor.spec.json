@@ -1,0 +1,74 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "CONTACTOR",
+ "image": "ill_contactor.png",
+ "scale": {
+  "mm_per_px": 0.0635
+ },
+ "body_px": [
+  56.0,
+  56.0,
+  576.0,
+  1344.0
+ ],
+ "preset": "illustration",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "A1",
+   "side": "top",
+   "x_px": 196.0,
+   "y_px": 148.0,
+   "group": "T"
+  },
+  {
+   "name": "1/L1",
+   "side": "top",
+   "x_px": 276.0,
+   "y_px": 148.0,
+   "group": "T"
+  },
+  {
+   "name": "3/L2",
+   "side": "top",
+   "x_px": 356.0,
+   "y_px": 148.0,
+   "group": "T"
+  },
+  {
+   "name": "5/L3",
+   "side": "top",
+   "x_px": 436.0,
+   "y_px": 148.0,
+   "group": "T"
+  },
+  {
+   "name": "A2",
+   "side": "bottom",
+   "x_px": 196.0,
+   "y_px": 1252.0,
+   "group": "B"
+  },
+  {
+   "name": "2/T1",
+   "side": "bottom",
+   "x_px": 276.0,
+   "y_px": 1252.0,
+   "group": "B"
+  },
+  {
+   "name": "4/T2",
+   "side": "bottom",
+   "x_px": 356.0,
+   "y_px": 1252.0,
+   "group": "B"
+  },
+  {
+   "name": "6/T3",
+   "side": "bottom",
+   "x_px": 436.0,
+   "y_px": 1252.0,
+   "group": "B"
+  }
+ ]
+}

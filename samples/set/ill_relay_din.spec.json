@@ -1,0 +1,74 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "RELAY_DIN",
+ "image": "ill_relay_din.png",
+ "scale": {
+  "mm_per_px": 0.0635
+ },
+ "body_px": [
+  56.0,
+  56.0,
+  576.0,
+  1424.0
+ ],
+ "preset": "illustration",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "A1",
+   "side": "top",
+   "x_px": 196.0,
+   "y_px": 148.0,
+   "group": "T"
+  },
+  {
+   "name": "11",
+   "side": "top",
+   "x_px": 276.0,
+   "y_px": 148.0,
+   "group": "T"
+  },
+  {
+   "name": "21",
+   "side": "top",
+   "x_px": 356.0,
+   "y_px": 148.0,
+   "group": "T"
+  },
+  {
+   "name": "31",
+   "side": "top",
+   "x_px": 436.0,
+   "y_px": 148.0,
+   "group": "T"
+  },
+  {
+   "name": "A2",
+   "side": "bottom",
+   "x_px": 196.0,
+   "y_px": 1332.0,
+   "group": "B"
+  },
+  {
+   "name": "12",
+   "side": "bottom",
+   "x_px": 276.0,
+   "y_px": 1332.0,
+   "group": "B"
+  },
+  {
+   "name": "22",
+   "side": "bottom",
+   "x_px": 356.0,
+   "y_px": 1332.0,
+   "group": "B"
+  },
+  {
+   "name": "32",
+   "side": "bottom",
+   "x_px": 436.0,
+   "y_px": 1332.0,
+   "group": "B"
+  }
+ ]
+}

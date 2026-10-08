@@ -1,0 +1,9 @@
+﻿name,side,offset_mm,x_mm,y_mm,x_px,y_px,kind,label,group
+L1,left,,,,195,260,,,
+2,right,,,,1205,260,,,
+L2,left,,,,195,420,,,
+4,right,,,,1205,420,,,
+L3,left,,,,195,580,,,
+6,right,,,,1205,580,,,
+L4,left,,,,195,740,,,
+8,right,,,,1205,740,,,

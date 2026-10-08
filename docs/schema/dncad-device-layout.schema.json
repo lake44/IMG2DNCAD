@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:imgvec:schema:dncad-device-layout:1.0",
+  "title": "dncad-device-layout/1.0 — DNCAD 배치 명세 (블랙박스 + 장치 접속점)",
+  "description": "장치 모델을 DNCAD의 규칙(블랙박스 크기·접속점 32 단위 간격·위 변 회전 0·아래 변 회전 180)대로 풀어 쓴 중립 파일. DNCAD 단위 = 6.4/mm. 좌표계: 원점 = 블랙박스 왼쪽 위, x 오른쪽, y 아래. 3단계 어댑터(.dncadbak 시험 백업, 생성기 API)가 이 파일을 읽는다.",
+  "type": "object",
+  "required": ["schema", "name", "units_per_mm", "box", "pins"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "dncad-device-layout/1.0" },
+    "name": { "type": "string" },
+    "units_per_mm": { "type": "number", "exclusiveMinimum": 0, "description": "DNCAD 단위/mm. 실측 6.4 (쪽 폭 297 mm = 1900 단위)." },
+    "origin": { "type": "string" },
+    "box": {
+      "type": "object",
+      "required": ["w", "h"],
+      "additionalProperties": false,
+      "properties": {
+        "w": { "type": "integer", "exclusiveMinimum": 0, "description": "블랙박스 폭(단위). 16의 배수." },
+        "h": { "type": "integer", "exclusiveMinimum": 0, "description": "블랙박스 높이(단위). 실측 112 또는 144." },
+        "w_mm": { "type": "number" },
+        "h_mm": { "type": "number" }
+      }
+    },
+    "pins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["designation", "side", "slot", "x", "y", "rotation"],
+        "additionalProperties": false,
+        "properties": {
+          "designation": { "type": "string", "minLength": 1, "description": "접속점 이름(DNCAD designation)" },
+          "side": { "enum": ["top", "bottom"] },
+          "slot": { "type": "integer", "minimum": 1, "description": "변을 따른 슬롯 번호(1 = 왼쪽에서 32 단위)" },
+          "x": { "type": "integer", "minimum": 0, "description": "블랙박스 왼쪽 위 기준 x(단위) = slot × 32" },
+          "y": { "type": "integer", "minimum": 0, "description": "위 변 0, 아래 변 = 박스 높이" },
+          "rotation": { "enum": [0, 180], "description": "위 변 0, 아래 변 180" },
+          "mirrored": { "type": ["boolean", "null"] },
+          "deviation_mm": { "type": "number", "description": "원래 위치와 슬롯 위치의 차이(mm)" },
+          "group": { "type": "string" },
+          "moved_from": { "type": "string", "description": "--remap-lr로 옮겨 온 경우 원래 변" }
+        }
+      }
+    },
+    "skipped_pins": { "type": "array", "items": { "type": "string" }, "description": "DNCAD에서 확인되지 않은 변이라 배치하지 않은 접속점" },
+    "issues": { "type": "array", "items": { "type": "string" } }
+  }
+}

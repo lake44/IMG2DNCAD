@@ -1,0 +1,179 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "PNOZ X3P",
+ "image": "real_pilz_pnoz_x3p.jpg",
+ "scale": {
+  "body_width_mm": 45.0
+ },
+ "body_px": [
+  308,
+  8,
+  890,
+  1192
+ ],
+ "preset": "illustration",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "A1",
+   "side": "top",
+   "x_px": 381.1,
+   "y_px": 86.0,
+   "group": "P3"
+  },
+  {
+   "name": "S31",
+   "side": "top",
+   "x_px": 505.7,
+   "y_px": 86.0,
+   "group": "P3"
+  },
+  {
+   "name": "S32",
+   "side": "top",
+   "x_px": 568.0,
+   "y_px": 86.0,
+   "group": "P3"
+  },
+  {
+   "name": "13",
+   "side": "top",
+   "x_px": 630.3,
+   "y_px": 86.0,
+   "group": "P3"
+  },
+  {
+   "name": "23",
+   "side": "top",
+   "x_px": 692.6,
+   "y_px": 86.0,
+   "group": "P3"
+  },
+  {
+   "name": "33",
+   "side": "top",
+   "x_px": 754.9,
+   "y_px": 86.0,
+   "group": "P3"
+  },
+  {
+   "name": "41",
+   "side": "top",
+   "x_px": 817.2,
+   "y_px": 86.0,
+   "group": "P3"
+  },
+  {
+   "name": "S11",
+   "side": "top",
+   "x_px": 375.0,
+   "y_px": 213.0,
+   "group": "P4"
+  },
+  {
+   "name": "S12",
+   "side": "top",
+   "x_px": 439.5,
+   "y_px": 213.0,
+   "group": "P4"
+  },
+  {
+   "name": "S13",
+   "side": "top",
+   "x_px": 504.0,
+   "y_px": 213.0,
+   "group": "P4"
+  },
+  {
+   "name": "S14",
+   "side": "top",
+   "x_px": 568.5,
+   "y_px": 213.0,
+   "group": "P4"
+  },
+  {
+   "name": "S21",
+   "side": "top",
+   "x_px": 633.0,
+   "y_px": 213.0,
+   "group": "P4"
+  },
+  {
+   "name": "S22",
+   "side": "top",
+   "x_px": 697.5,
+   "y_px": 213.0,
+   "group": "P4"
+  },
+  {
+   "name": "S33",
+   "side": "top",
+   "x_px": 762.0,
+   "y_px": 213.0,
+   "group": "P4"
+  },
+  {
+   "name": "S34",
+   "side": "top",
+   "x_px": 826.5,
+   "y_px": 213.0,
+   "group": "P4"
+  },
+  {
+   "name": "A2",
+   "side": "bottom",
+   "x_px": 385.0,
+   "y_px": 1130.0,
+   "group": "P4b"
+  },
+  {
+   "name": "Y30",
+   "side": "bottom",
+   "x_px": 447.3,
+   "y_px": 1130.0,
+   "group": "P4b"
+  },
+  {
+   "name": "Y31",
+   "side": "bottom",
+   "x_px": 509.6,
+   "y_px": 1130.0,
+   "group": "P4b"
+  },
+  {
+   "name": "Y32",
+   "side": "bottom",
+   "x_px": 571.9,
+   "y_px": 1130.0,
+   "group": "P4b"
+  },
+  {
+   "name": "14",
+   "side": "bottom",
+   "x_px": 634.2,
+   "y_px": 1130.0,
+   "group": "P4b"
+  },
+  {
+   "name": "24",
+   "side": "bottom",
+   "x_px": 696.5,
+   "y_px": 1130.0,
+   "group": "P4b"
+  },
+  {
+   "name": "34",
+   "side": "bottom",
+   "x_px": 758.8,
+   "y_px": 1130.0,
+   "group": "P4b"
+  },
+  {
+   "name": "42",
+   "side": "bottom",
+   "x_px": 821.1,
+   "y_px": 1130.0,
+   "group": "P4b"
+  }
+ ]
+}

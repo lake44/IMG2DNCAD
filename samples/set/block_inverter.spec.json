@@ -1,0 +1,60 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "block_inverter",
+ "image": "block_inverter.png",
+ "scale": {
+  "mm_per_px": 0.1
+ },
+ "body_px": [
+  400.0,
+  260.0,
+  1000.0,
+  640.0
+ ],
+ "preset": "lineart",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "R",
+   "side": "top",
+   "x_px": 520.0,
+   "y_px": 170.0
+  },
+  {
+   "name": "S",
+   "side": "top",
+   "x_px": 640.0,
+   "y_px": 170.0
+  },
+  {
+   "name": "T",
+   "side": "top",
+   "x_px": 760.0,
+   "y_px": 170.0
+  },
+  {
+   "name": "U",
+   "side": "bottom",
+   "x_px": 520.0,
+   "y_px": 730.0
+  },
+  {
+   "name": "V",
+   "side": "bottom",
+   "x_px": 640.0,
+   "y_px": 730.0
+  },
+  {
+   "name": "W",
+   "side": "bottom",
+   "x_px": 760.0,
+   "y_px": 730.0
+  },
+  {
+   "name": "PE",
+   "side": "bottom",
+   "x_px": 880.0,
+   "y_px": 730.0
+  }
+ ]
+}

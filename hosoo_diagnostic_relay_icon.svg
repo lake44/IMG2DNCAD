@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 465" width="200" height="465">
+  <!-- Top terminal block (L1 L2 L3) -->
+  <rect x="10" y="4" width="180" height="78" rx="10" fill="#565656" stroke="#2e2e2e" stroke-width="2"/>
+
+  <text x="45"  y="20" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="bold">L1</text>
+  <text x="100" y="20" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="bold">L2</text>
+  <text x="155" y="20" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="bold">L3</text>
+
+  <g>
+    <circle cx="45" cy="50" r="16" fill="#202020" stroke="#111111" stroke-width="2"/>
+    <circle cx="45" cy="50" r="9" fill="#b8b8b8" stroke="#8a8a8a" stroke-width="1"/>
+    <rect x="39" y="48.5" width="12" height="3" fill="#555555" transform="rotate(25 45 50)"/>
+  </g>
+  <g>
+    <circle cx="100" cy="50" r="16" fill="#202020" stroke="#111111" stroke-width="2"/>
+    <circle cx="100" cy="50" r="9" fill="#b8b8b8" stroke="#8a8a8a" stroke-width="1"/>
+    <rect x="94" y="48.5" width="12" height="3" fill="#555555" transform="rotate(25 100 50)"/>
+  </g>
+  <g>
+    <circle cx="155" cy="50" r="16" fill="#202020" stroke="#111111" stroke-width="2"/>
+    <circle cx="155" cy="50" r="9" fill="#b8b8b8" stroke="#8a8a8a" stroke-width="1"/>
+    <rect x="149" y="48.5" width="12" height="3" fill="#555555" transform="rotate(25 155 50)"/>
+  </g>
+
+  <!-- vent / terminal comb -->
+  <g fill="#2b2b2b">
+    <rect x="16"  y="84" width="4" height="12"/>
+    <rect x="30"  y="84" width="4" height="12"/>
+    <rect x="44"  y="84" width="4" height="12"/>
+    <rect x="58"  y="84" width="4" height="12"/>
+    <rect x="72"  y="84" width="4" height="12"/>
+    <rect x="86"  y="84" width="4" height="12"/>
+    <rect x="100" y="84" width="4" height="12"/>
+    <rect x="114" y="84" width="4" height="12"/>
+    <rect x="128" y="84" width="4" height="12"/>
+    <rect x="142" y="84" width="4" height="12"/>
+    <rect x="156" y="84" width="4" height="12"/>
+    <rect x="170" y="84" width="4" height="12"/>
+  </g>
+
+  <!-- main body -->
+  <rect x="6" y="96" width="188" height="330" rx="12" fill="#333333" stroke="#1c1c1c" stroke-width="2"/>
+
+  <!-- metal hinge rod -->
+  <rect x="15" y="100" width="170" height="6" rx="3" fill="#bfc2c3"/>
+
+  <!-- clear hinged cover (flipped) -->
+  <polygon points="20,112 130,100 130,420 20,430" fill="#d8dadb" fill-opacity="0.92" stroke="#a9acad" stroke-width="1.5"/>
+  <line x1="26" y1="132" x2="116" y2="116" stroke="#ffffff" stroke-width="2" opacity="0.6"/>
+  <line x1="26" y1="152" x2="120" y2="140" stroke="#ffffff" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- brand / label text -->
+  <text x="75" y="305" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="10" font-weight="bold" letter-spacing="1.2">DIAGNOSTIC</text>
+  <text x="75" y="330" text-anchor="middle" fill="#ffffff" font-family="Georgia, serif" font-size="15" font-style="italic" font-weight="600">Schneider</text>
+
+  <!-- LED indicators -->
+  <rect x="155" y="196" width="10" height="14" rx="2" fill="#1c1c1c" stroke="#444444"/>
+  <circle cx="160" cy="203" r="3" fill="#3ddc4a"/>
+  <rect x="170" y="196" width="10" height="14" rx="2" fill="#1c1c1c" stroke="#444444"/>
+  <text x="180" y="192" text-anchor="middle" fill="#cccccc" font-family="Arial, sans-serif" font-size="7">R</text>
+
+  <!-- green test button -->
+  <rect x="150" y="230" width="34" height="150" rx="10" fill="#78b83e" stroke="#4f7d27" stroke-width="2"/>
+  <rect x="158" y="250" width="18" height="6" rx="3" fill="#5a8f2c"/>
+  <text x="167" y="365" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="16" font-weight="bold">T</text>
+
+  <!-- bottom terminal block (12 11 14 / 22 21 24) -->
+  <rect x="10" y="378" width="180" height="82" rx="10" fill="#565656" stroke="#2e2e2e" stroke-width="2"/>
+
+  <text x="45"  y="392" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="11" font-weight="bold">12</text>
+  <text x="100" y="392" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="11" font-weight="bold">11</text>
+  <text x="155" y="392" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="11" font-weight="bold">14</text>
+
+  <g>
+    <circle cx="45" cy="404" r="12" fill="#202020" stroke="#111111" stroke-width="2"/>
+    <circle cx="45" cy="404" r="6.5" fill="#b8b8b8" stroke="#8a8a8a" stroke-width="1"/>
+  </g>
+  <g>
+    <circle cx="100" cy="404" r="12" fill="#202020" stroke="#111111" stroke-width="2"/>
+    <circle cx="100" cy="404" r="6.5" fill="#b8b8b8" stroke="#8a8a8a" stroke-width="1"/>
+  </g>
+  <g>
+    <circle cx="155" cy="404" r="12" fill="#202020" stroke="#111111" stroke-width="2"/>
+    <circle cx="155" cy="404" r="6.5" fill="#b8b8b8" stroke="#8a8a8a" stroke-width="1"/>
+  </g>
+
+  <g>
+    <circle cx="45" cy="436" r="12" fill="#202020" stroke="#111111" stroke-width="2"/>
+    <circle cx="45" cy="436" r="6.5" fill="#b8b8b8" stroke="#8a8a8a" stroke-width="1"/>
+  </g>
+  <g>
+    <circle cx="100" cy="436" r="12" fill="#202020" stroke="#111111" stroke-width="2"/>
+    <circle cx="100" cy="436" r="6.5" fill="#b8b8b8" stroke="#8a8a8a" stroke-width="1"/>
+  </g>
+  <g>
+    <circle cx="155" cy="436" r="12" fill="#202020" stroke="#111111" stroke-width="2"/>
+    <circle cx="155" cy="436" r="6.5" fill="#b8b8b8" stroke="#8a8a8a" stroke-width="1"/>
+  </g>
+
+  <text x="45"  y="454" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="11" font-weight="bold">22</text>
+  <text x="100" y="454" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="11" font-weight="bold">21</text>
+  <text x="155" y="454" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="11" font-weight="bold">24</text>
+</svg>

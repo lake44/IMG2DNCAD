@@ -1,0 +1,90 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "line_dev_lr_thin",
+ "image": "line_dev_lr_thin.png",
+ "scale": {
+  "mm_per_px": 0.1
+ },
+ "body_px": [
+  320.0,
+  140.0,
+  1080.0,
+  860.0
+ ],
+ "preset": "lineart",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "L1",
+   "side": "left",
+   "x_px": 195.0,
+   "y_px": 260.0
+  },
+  {
+   "name": "2",
+   "side": "right",
+   "x_px": 1205.0,
+   "y_px": 260.0
+  },
+  {
+   "name": "L2",
+   "side": "left",
+   "x_px": 195.0,
+   "y_px": 356.0
+  },
+  {
+   "name": "4",
+   "side": "right",
+   "x_px": 1205.0,
+   "y_px": 356.0
+  },
+  {
+   "name": "L3",
+   "side": "left",
+   "x_px": 195.0,
+   "y_px": 452.0
+  },
+  {
+   "name": "6",
+   "side": "right",
+   "x_px": 1205.0,
+   "y_px": 452.0
+  },
+  {
+   "name": "L4",
+   "side": "left",
+   "x_px": 195.0,
+   "y_px": 548.0
+  },
+  {
+   "name": "8",
+   "side": "right",
+   "x_px": 1205.0,
+   "y_px": 548.0
+  },
+  {
+   "name": "L5",
+   "side": "left",
+   "x_px": 195.0,
+   "y_px": 644.0
+  },
+  {
+   "name": "10",
+   "side": "right",
+   "x_px": 1205.0,
+   "y_px": 644.0
+  },
+  {
+   "name": "L6",
+   "side": "left",
+   "x_px": 195.0,
+   "y_px": 740.0
+  },
+  {
+   "name": "12",
+   "side": "right",
+   "x_px": 1205.0,
+   "y_px": 740.0
+  }
+ ]
+}

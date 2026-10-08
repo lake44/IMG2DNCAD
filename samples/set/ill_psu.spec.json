@@ -1,0 +1,67 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "PSU",
+ "image": "ill_psu.png",
+ "scale": {
+  "mm_per_px": 0.0635
+ },
+ "body_px": [
+  56.0,
+  56.0,
+  536.0,
+  1504.0
+ ],
+ "preset": "illustration",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "L",
+   "side": "top",
+   "x_px": 216.0,
+   "y_px": 148.0,
+   "group": "AC"
+  },
+  {
+   "name": "N",
+   "side": "top",
+   "x_px": 296.0,
+   "y_px": 148.0,
+   "group": "AC"
+  },
+  {
+   "name": "PE",
+   "side": "top",
+   "x_px": 376.0,
+   "y_px": 148.0,
+   "group": "AC"
+  },
+  {
+   "name": "+V1",
+   "side": "bottom",
+   "x_px": 176.0,
+   "y_px": 1412.0,
+   "group": "DC"
+  },
+  {
+   "name": "+V2",
+   "side": "bottom",
+   "x_px": 256.0,
+   "y_px": 1412.0,
+   "group": "DC"
+  },
+  {
+   "name": "-V1",
+   "side": "bottom",
+   "x_px": 336.0,
+   "y_px": 1412.0,
+   "group": "DC"
+  },
+  {
+   "name": "-V2",
+   "side": "bottom",
+   "x_px": 416.0,
+   "y_px": 1412.0,
+   "group": "DC"
+  }
+ ]
+}

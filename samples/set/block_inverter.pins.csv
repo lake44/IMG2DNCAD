@@ -1,0 +1,8 @@
+﻿name,side,offset_mm,x_mm,y_mm,x_px,y_px,kind,label,group
+R,top,,,,520,170,,,
+S,top,,,,640,170,,,
+T,top,,,,760,170,,,
+U,bottom,,,,520,730,,,
+V,bottom,,,,640,730,,,
+W,bottom,,,,760,730,,,
+PE,bottom,,,,880,730,,,

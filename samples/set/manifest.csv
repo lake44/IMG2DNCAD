@@ -1,0 +1,21 @@
+﻿id,분류,파일,너비px,높이px,축척(mm/px),축척 근거,접속점수,위,아래,왼쪽,오른쪽,프리셋,비고
+real_pilz_pnoz_x3p,제품 사진,real_pilz_pnoz_x3p.jpg,1200,1200,,"본체 폭 45 mm(제조사 자료 값, 미확인)",23,15,8,0,0,illustration,Pilz PNOZ X3P 안전릴레이 카탈로그 사진. 단자 23개(상단 2열 15개 + 하단 8개)
+real_relay_icon,제품 일러스트,real_relay_icon.png,800,1860,,본체 폭 22.5 mm 가정,9,3,6,0,0,illustration,hosoo_diagnostic_relay_icon.svg(사용자 제공)을 4배로 그린 그림. 단자 9개
+ill_relay_din,제품 일러스트,ill_relay_din.png,632,1480,0.06350,단자 간격 5.08 mm 기준(0.0635 mm/px),8,4,4,0,0,illustration,합성: 하우징·단자 플러그·인쇄 핀 이름
+ill_safety_relay,제품 일러스트,ill_safety_relay.png,872,1872,0.06350,단자 간격 5.08 mm 기준(0.0635 mm/px),23,15,8,0,0,illustration,합성: 하우징·단자 플러그·인쇄 핀 이름
+ill_plc_di_card,제품 일러스트,ill_plc_di_card.png,872,1600,0.06350,단자 간격 5.08 mm 기준(0.0635 mm/px),16,8,8,0,0,illustration,합성: 하우징·단자 플러그·인쇄 핀 이름
+ill_psu,제품 일러스트,ill_psu.png,592,1560,0.06350,단자 간격 5.08 mm 기준(0.0635 mm/px),7,3,4,0,0,illustration,합성: 하우징·단자 플러그·인쇄 핀 이름
+ill_contactor,제품 일러스트,ill_contactor.png,632,1400,0.06350,단자 간격 5.08 mm 기준(0.0635 mm/px),8,4,4,0,0,illustration,합성: 하우징·단자 플러그·인쇄 핀 이름
+ill_io_module,제품 일러스트,ill_io_module.png,712,1752,0.06350,단자 간격 5.08 mm 기준(0.0635 mm/px),18,12,6,0,0,illustration,합성: 하우징·단자 플러그·인쇄 핀 이름
+line_dev_lr,선화 심볼,line_dev_lr.png,1400,1000,0.10000,0.1 mm/px 지정,8,0,0,4,4,lineart,좌우 변에 단자 원(DNCAD가 확인하지 못한 배치) — --remap-lr 시험용
+line_dev_tb,선화 심볼,line_dev_tb.png,1400,1000,0.10000,0.1 mm/px 지정,8,4,4,0,0,lineart,"위·아래 변에 단자 원, 간격 7.5 mm"
+line_dev_tb_pitch5,선화 심볼,line_dev_tb_pitch5.png,1400,1000,0.10000,0.1 mm/px 지정,16,8,8,0,0,lineart,"위·아래 변, 간격 5 mm(DNCAD 슬롯과 일치), 핀 8쌍"
+line_dev_lr_thin,선화 심볼,line_dev_lr_thin.png,1400,1000,0.10000,0.1 mm/px 지정,12,0,0,6,6,lineart,"좌우 변, 가는 선(0.3 mm), 핀 6쌍"
+block_plc,블록도,block_plc.png,1750,1125,0.08000,0.08 mm/px 지정,16,8,8,0,0,lineart,"PLC 입출력 블록: 위 8·아래 8, 이름은 상자 안쪽"
+block_inverter,블록도,block_inverter.png,1400,900,0.10000,0.1 mm/px 지정,7,3,4,0,0,lineart,"인버터 블록: 위 R S T, 아래 U V W PE"
+deg_relay_icon_jpeg,열화본,deg_relay_icon_jpeg.jpg,800,1860,,real_relay_icon와 같은 기준,9,3,6,0,0,illustration,릴레이 그림 + 조명 불균일 + 잡음 + JPEG q50
+deg_pilz_lowres,열화본,deg_pilz_lowres.jpg,600,600,,real_pilz_pnoz_x3p와 같은 기준,23,15,8,0,0,illustration,Pilz 사진을 0.5배로 줄이고 블러 + JPEG q45 (저해상도 카탈로그)
+deg_ill_safety_blur,열화본,deg_ill_safety_blur.jpg,872,1872,0.06350,ill_safety_relay와 같은 기준,23,15,8,0,0,illustration,합성 안전릴레이 + 블러 + 잡음 + JPEG q92
+deg_ill_contactor_shading,열화본,deg_ill_contactor_shading.jpg,632,1400,0.06350,ill_contactor와 같은 기준,8,4,4,0,0,illustration,합성 접촉기 + 조명 불균일 + 잡음 + JPEG q60
+deg_line_scan,열화본,deg_line_scan.png,1400,1000,0.10000,line_dev_tb와 같은 기준,8,4,4,0,0,lineart,"선화 + 스캔 느낌(블러 1.5, 잡음 12, 조명 0.35)"
+deg_block_jpeg,열화본,deg_block_jpeg.jpg,1750,1125,0.08000,block_plc와 같은 기준,16,8,8,0,0,lineart,블록도 + JPEG q45

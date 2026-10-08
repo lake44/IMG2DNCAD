@@ -1,0 +1,144 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "IO_MODULE",
+ "image": "ill_io_module.png",
+ "scale": {
+  "mm_per_px": 0.0635
+ },
+ "body_px": [
+  56.0,
+  56.0,
+  656.0,
+  1696.0
+ ],
+ "preset": "illustration",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "X1",
+   "side": "top",
+   "x_px": 156.0,
+   "y_px": 148.0,
+   "group": "R1"
+  },
+  {
+   "name": "X2",
+   "side": "top",
+   "x_px": 236.0,
+   "y_px": 148.0,
+   "group": "R1"
+  },
+  {
+   "name": "X3",
+   "side": "top",
+   "x_px": 316.0,
+   "y_px": 148.0,
+   "group": "R1"
+  },
+  {
+   "name": "X4",
+   "side": "top",
+   "x_px": 396.0,
+   "y_px": 148.0,
+   "group": "R1"
+  },
+  {
+   "name": "X5",
+   "side": "top",
+   "x_px": 476.0,
+   "y_px": 148.0,
+   "group": "R1"
+  },
+  {
+   "name": "X6",
+   "side": "top",
+   "x_px": 556.0,
+   "y_px": 148.0,
+   "group": "R1"
+  },
+  {
+   "name": "X7",
+   "side": "top",
+   "x_px": 156.0,
+   "y_px": 300.0,
+   "group": "R2"
+  },
+  {
+   "name": "X8",
+   "side": "top",
+   "x_px": 236.0,
+   "y_px": 300.0,
+   "group": "R2"
+  },
+  {
+   "name": "X9",
+   "side": "top",
+   "x_px": 316.0,
+   "y_px": 300.0,
+   "group": "R2"
+  },
+  {
+   "name": "X10",
+   "side": "top",
+   "x_px": 396.0,
+   "y_px": 300.0,
+   "group": "R2"
+  },
+  {
+   "name": "X11",
+   "side": "top",
+   "x_px": 476.0,
+   "y_px": 300.0,
+   "group": "R2"
+  },
+  {
+   "name": "X12",
+   "side": "top",
+   "x_px": 556.0,
+   "y_px": 300.0,
+   "group": "R2"
+  },
+  {
+   "name": "Y1",
+   "side": "bottom",
+   "x_px": 156.0,
+   "y_px": 1604.0,
+   "group": "R3"
+  },
+  {
+   "name": "Y2",
+   "side": "bottom",
+   "x_px": 236.0,
+   "y_px": 1604.0,
+   "group": "R3"
+  },
+  {
+   "name": "Y3",
+   "side": "bottom",
+   "x_px": 316.0,
+   "y_px": 1604.0,
+   "group": "R3"
+  },
+  {
+   "name": "Y4",
+   "side": "bottom",
+   "x_px": 396.0,
+   "y_px": 1604.0,
+   "group": "R3"
+  },
+  {
+   "name": "Y5",
+   "side": "bottom",
+   "x_px": 476.0,
+   "y_px": 1604.0,
+   "group": "R3"
+  },
+  {
+   "name": "Y6",
+   "side": "bottom",
+   "x_px": 556.0,
+   "y_px": 1604.0,
+   "group": "R3"
+  }
+ ]
+}

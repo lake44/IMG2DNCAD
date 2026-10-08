@@ -1,0 +1,81 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "deg_relay_icon_jpeg",
+ "image": "deg_relay_icon_jpeg.jpg",
+ "scale": {
+  "body_width_mm": 22.5
+ },
+ "body_px": [
+  24.0,
+  16.0,
+  776.0,
+  1840.0
+ ],
+ "preset": "illustration",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "L1",
+   "side": "top",
+   "x_px": 180.0,
+   "y_px": 200.0,
+   "group": "T"
+  },
+  {
+   "name": "L2",
+   "side": "top",
+   "x_px": 400.0,
+   "y_px": 200.0,
+   "group": "T"
+  },
+  {
+   "name": "L3",
+   "side": "top",
+   "x_px": 620.0,
+   "y_px": 200.0,
+   "group": "T"
+  },
+  {
+   "name": "12",
+   "side": "bottom",
+   "x_px": 180.0,
+   "y_px": 1616.0,
+   "group": "B1"
+  },
+  {
+   "name": "11",
+   "side": "bottom",
+   "x_px": 400.0,
+   "y_px": 1616.0,
+   "group": "B1"
+  },
+  {
+   "name": "14",
+   "side": "bottom",
+   "x_px": 620.0,
+   "y_px": 1616.0,
+   "group": "B1"
+  },
+  {
+   "name": "22",
+   "side": "bottom",
+   "x_px": 180.0,
+   "y_px": 1744.0,
+   "group": "B2"
+  },
+  {
+   "name": "21",
+   "side": "bottom",
+   "x_px": 400.0,
+   "y_px": 1744.0,
+   "group": "B2"
+  },
+  {
+   "name": "24",
+   "side": "bottom",
+   "x_px": 620.0,
+   "y_px": 1744.0,
+   "group": "B2"
+  }
+ ]
+}

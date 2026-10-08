@@ -1,0 +1,259 @@
+{
+ "about": "imgvec이 만든 DNCAD 백업 템플릿 (도면 내용 없음). tools/extract_dncad_template.py로 생성",
+ "manifest": {
+  "format": "dncad.backup",
+  "formatVersion": 1,
+  "schemaVersion": "0070",
+  "apiBuild": "4719c449dc90bc9cf922e56875892e87c54e0586",
+  "tagLetterSet": "practice"
+ },
+ "tables": [
+  "projects",
+  "structure_nodes",
+  "devices",
+  "potentials",
+  "signals",
+  "components",
+  "connection_points",
+  "part_assignments",
+  "pages",
+  "placements",
+  "graphic_anchors",
+  "annotations",
+  "structure_boxes",
+  "connections",
+  "connection_endpoints",
+  "graphic_wires",
+  "system_links",
+  "nets",
+  "net_membership_projection",
+  "aggregates",
+  "aggregate_members",
+  "plc_boxes",
+  "plc_cards",
+  "plc_channels",
+  "plc_connection_points"
+ ],
+ "globalDefinitions": [
+  {
+   "oldDefinitionId": "60295e88-87e2-427f-836e-2e412ca54902",
+   "key": "angle"
+  },
+  {
+   "oldDefinitionId": "6c6a3b22-96fc-45a9-b3f5-84c0ffcecf43",
+   "key": "black_box"
+  },
+  {
+   "oldDefinitionId": "384b1c40-cb47-44b8-881a-2fc544630da5",
+   "key": "brake_electromagnetic"
+  },
+  {
+   "oldDefinitionId": "10b4d9c6-1e39-4ff0-804e-cd9fbaa235be",
+   "key": "bridge"
+  },
+  {
+   "oldDefinitionId": "16b35c3a-0e3e-43ef-be36-e1bce7490f98",
+   "key": "cable_definition_line"
+  },
+  {
+   "oldDefinitionId": "45047838-521f-4eb4-946d-b794e11d9cf3",
+   "key": "connector_pin_female"
+  },
+  {
+   "oldDefinitionId": "47ed6d9c-022d-43b9-9602-488660579da0",
+   "key": "contact_co_2c"
+  },
+  {
+   "oldDefinitionId": "1899fdf6-ced3-459a-aa3f-bd503d59f8a7",
+   "key": "contact_nc_dxf"
+  },
+  {
+   "oldDefinitionId": "4be27438-5955-4856-8634-e3033d014af9",
+   "key": "contact_no_dxf"
+  },
+  {
+   "oldDefinitionId": "a66e8767-1857-4a62-8294-853f4992a457",
+   "key": "ct_path1"
+  },
+  {
+   "oldDefinitionId": "9ae0bdf4-e010-43f8-ad53-1040447b04b6",
+   "key": "device_connection_point"
+  },
+  {
+   "oldDefinitionId": "3f866bf4-c0d6-4acd-86fb-bd831e8c6dfc",
+   "key": "device_connection_point_dual"
+  },
+  {
+   "oldDefinitionId": "2cabc6dd-ac36-418f-a270-9394c17f6ae2",
+   "key": "earth"
+  },
+  {
+   "oldDefinitionId": "b630bedd-b530-4ddf-ba8b-7c96bd0ccf0d",
+   "key": "elb_2p"
+  },
+  {
+   "oldDefinitionId": "6b448e3c-1cb0-4edf-8a4e-18cfd2457a8c",
+   "key": "estop_nc_dxf"
+  },
+  {
+   "oldDefinitionId": "69c59380-5b3f-43b8-9c89-f402e0b45003",
+   "key": "fuse_3p_dxf"
+  },
+  {
+   "oldDefinitionId": "c86c580d-8e64-4e40-945d-bfcddb68f615",
+   "key": "interrupt_point"
+  },
+  {
+   "oldDefinitionId": "83e05d9a-75ba-4171-8179-d8b41c4d69e2",
+   "key": "interrupt_point_in"
+  },
+  {
+   "oldDefinitionId": "019fb20d-6225-7bb9-bb23-b76fc136f5d4",
+   "key": "mc_main_contact_3p_no"
+  },
+  {
+   "oldDefinitionId": "217f4d22-149c-4253-a3dc-f53ab03ede0c",
+   "key": "mcb_1p_dxf"
+  },
+  {
+   "oldDefinitionId": "019fb20d-629c-70a9-9efb-75db081258bd",
+   "key": "mcb_2p_1c"
+  },
+  {
+   "oldDefinitionId": "4c706226-814e-4c84-92e1-8264e9c0c195",
+   "key": "mcb_3p_dxf"
+  },
+  {
+   "oldDefinitionId": "d1b96dbf-7e15-462a-b8b5-77d2ec7d1082",
+   "key": "mcb_4p_dxf"
+  },
+  {
+   "oldDefinitionId": "e7cb7b95-bbe1-4632-8e3a-e41b75426d8f",
+   "key": "mccb_3p"
+  },
+  {
+   "oldDefinitionId": "278cb17a-a7fe-4b09-b3c9-2b4634d02c3f",
+   "key": "motor_1ph_fan"
+  },
+  {
+   "oldDefinitionId": "09350734-e0c4-4826-828a-2e103d6e0a37",
+   "key": "motor_3ph_earth_top"
+  },
+  {
+   "oldDefinitionId": "dc55aba7-978f-4c7e-a13d-5b805bb68a00",
+   "key": "pilot_lamp"
+  },
+  {
+   "oldDefinitionId": "ff49cedd-3b45-416c-93e5-1fa61e7a5c0b",
+   "key": "potential_terminal"
+  },
+  {
+   "oldDefinitionId": "89863c6c-8b6c-427a-8bbd-20a4ec683658",
+   "key": "power_breaker_3p_li"
+  },
+  {
+   "oldDefinitionId": "ce5db411-06ff-40d1-8512-5013fa542692",
+   "key": "prox_sensor_nc_3wire"
+  },
+  {
+   "oldDefinitionId": "4f3f23d6-f7be-47d7-b412-a0cb8002b741",
+   "key": "pushbutton_nc_dxf"
+  },
+  {
+   "oldDefinitionId": "fd67f38b-b927-40f8-bc42-a849ed1b6b56",
+   "key": "pushbutton_no_dxf"
+  },
+  {
+   "oldDefinitionId": "bcd8e68f-d7d2-4e80-b2cb-a7a258c6d1bd",
+   "key": "relay_coil_dxf"
+  },
+  {
+   "oldDefinitionId": "ed234399-d040-4e5b-b37d-4b4abe6c29fe",
+   "key": "socket_outlet_3p_pe"
+  },
+  {
+   "oldDefinitionId": "039e26b1-535e-4d82-8e5b-61900ea12c98",
+   "key": "t_node_a"
+  },
+  {
+   "oldDefinitionId": "dfa4a85d-c9b1-4526-9cfe-f9ab776f5684",
+   "key": "t_node_b"
+  },
+  {
+   "oldDefinitionId": "fc05dbd6-9900-49aa-aaac-40841cf1c155",
+   "key": "t_node_c"
+  },
+  {
+   "oldDefinitionId": "b36204a4-6dde-45b5-9fb9-0427248144e3",
+   "key": "t_node_d"
+  },
+  {
+   "oldDefinitionId": "edb3630c-92d2-41e0-b6c0-c8c52ced1f58",
+   "key": "terminal_block"
+  },
+  {
+   "oldDefinitionId": "adb289e2-539e-4c26-9c81-161e56128fd4",
+   "key": "test_terminal"
+  }
+ ],
+ "project": {
+  "id": "01a0d269-978e-72a5-ba33-84d23d032afa",
+  "name": "imgvec 시험 프로젝트",
+  "settings": {
+   "display": {
+    "tNodeStyle": "target",
+    "wireNoLabels": true,
+    "contactMirror": true,
+    "wireColorMode": "potential",
+    "potentialColors": true
+   },
+   "tagFormat": {
+    "digits": 2
+   },
+   "tagLetters": {
+    "set": "practice"
+   }
+  },
+  "created_at": "2026-09-24T07:55:30.561516+00:00"
+ },
+ "structure_nodes": [
+  {
+   "id": "01a0d269-9795-750f-a143-942e63aaf15a",
+   "name": "A",
+   "aspect": "function",
+   "ordinal": 0,
+   "created_at": "2026-09-24T07:55:30.561516+00:00",
+   "description": null,
+   "parent_node_id": null
+  },
+  {
+   "id": "01a0d269-9795-750f-a143-942fbb4c6ff2",
+   "name": "1",
+   "aspect": "location",
+   "ordinal": 0,
+   "created_at": "2026-09-24T07:55:30.561516+00:00",
+   "description": null,
+   "parent_node_id": null
+  }
+ ],
+ "page": {
+  "id": "01a0d269-9795-750f-a143-9430904586a5",
+  "name": "imgvec 시험",
+  "scale": null,
+  "ordinal": 0,
+  "sl_kind": null,
+  "sheet_no": 1,
+  "page_type": "ML",
+  "revisions": null,
+  "sheet_sub": null,
+  "created_at": "2026-09-24T07:55:30.561516+00:00",
+  "page_setup": null,
+  "frame_form_id": null,
+  "report_config": null,
+  "continuation_of": null,
+  "document_node_id": null,
+  "function_node_id": "01a0d269-9795-750f-a143-942e63aaf15a",
+  "location_node_id": "01a0d269-9795-750f-a143-942fbb4c6ff2",
+  "continuation_index": null
+ }
+}

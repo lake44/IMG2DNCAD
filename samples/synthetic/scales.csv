@@ -1,0 +1,7 @@
+file,mm_per_px
+device_clean.png,0.1
+device_blur.png,0.1
+device_noisy.png,0.1
+device_jpeg.png,0.1
+device_coarse.png,0.25
+device_pins6.png,0.1

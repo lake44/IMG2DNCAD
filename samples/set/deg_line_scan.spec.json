@@ -1,0 +1,66 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "deg_line_scan",
+ "image": "deg_line_scan.png",
+ "scale": {
+  "mm_per_px": 0.1
+ },
+ "body_px": [
+  320.0,
+  240.0,
+  1080.0,
+  760.0
+ ],
+ "preset": "lineart",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "T1",
+   "side": "top",
+   "x_px": 380.0,
+   "y_px": 115.0
+  },
+  {
+   "name": "B1",
+   "side": "bottom",
+   "x_px": 380.0,
+   "y_px": 885.0
+  },
+  {
+   "name": "T2",
+   "side": "top",
+   "x_px": 455.0,
+   "y_px": 115.0
+  },
+  {
+   "name": "B2",
+   "side": "bottom",
+   "x_px": 455.0,
+   "y_px": 885.0
+  },
+  {
+   "name": "T3",
+   "side": "top",
+   "x_px": 530.0,
+   "y_px": 115.0
+  },
+  {
+   "name": "B3",
+   "side": "bottom",
+   "x_px": 530.0,
+   "y_px": 885.0
+  },
+  {
+   "name": "T4",
+   "side": "top",
+   "x_px": 605.0,
+   "y_px": 115.0
+  },
+  {
+   "name": "B4",
+   "side": "bottom",
+   "x_px": 605.0,
+   "y_px": 885.0
+  }
+ ]
+}

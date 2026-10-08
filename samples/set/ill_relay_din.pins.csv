@@ -1,0 +1,9 @@
+﻿name,side,offset_mm,x_mm,y_mm,x_px,y_px,kind,label,group
+A1,top,,,,196,148,,,T
+11,top,,,,276,148,,,T
+21,top,,,,356,148,,,T
+31,top,,,,436,148,,,T
+A2,bottom,,,,196,1332,,,B
+12,bottom,,,,276,1332,,,B
+22,bottom,,,,356,1332,,,B
+32,bottom,,,,436,1332,,,B

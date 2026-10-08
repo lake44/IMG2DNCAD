@@ -1,0 +1,81 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "DIAG RELAY",
+ "image": "real_relay_icon.png",
+ "scale": {
+  "body_width_mm": 22.5
+ },
+ "body_px": [
+  24,
+  16,
+  776,
+  1840
+ ],
+ "preset": "illustration",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "L1",
+   "side": "top",
+   "x_px": 180,
+   "y_px": 200,
+   "group": "T"
+  },
+  {
+   "name": "L2",
+   "side": "top",
+   "x_px": 400,
+   "y_px": 200,
+   "group": "T"
+  },
+  {
+   "name": "L3",
+   "side": "top",
+   "x_px": 620,
+   "y_px": 200,
+   "group": "T"
+  },
+  {
+   "name": "12",
+   "side": "bottom",
+   "x_px": 180,
+   "y_px": 1616,
+   "group": "B1"
+  },
+  {
+   "name": "11",
+   "side": "bottom",
+   "x_px": 400,
+   "y_px": 1616,
+   "group": "B1"
+  },
+  {
+   "name": "14",
+   "side": "bottom",
+   "x_px": 620,
+   "y_px": 1616,
+   "group": "B1"
+  },
+  {
+   "name": "22",
+   "side": "bottom",
+   "x_px": 180,
+   "y_px": 1744,
+   "group": "B2"
+  },
+  {
+   "name": "21",
+   "side": "bottom",
+   "x_px": 400,
+   "y_px": 1744,
+   "group": "B2"
+  },
+  {
+   "name": "24",
+   "side": "bottom",
+   "x_px": 620,
+   "y_px": 1744,
+   "group": "B2"
+  }
+ ]
+}

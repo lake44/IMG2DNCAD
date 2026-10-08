@@ -1,0 +1,8 @@
+﻿name,side,offset_mm,x_mm,y_mm,x_px,y_px,kind,label,group
+L,top,,,,216,148,,,AC
+N,top,,,,296,148,,,AC
+PE,top,,,,376,148,,,AC
++V1,bottom,,,,176,1412,,,DC
++V2,bottom,,,,256,1412,,,DC
+-V1,bottom,,,,336,1412,,,DC
+-V2,bottom,,,,416,1412,,,DC

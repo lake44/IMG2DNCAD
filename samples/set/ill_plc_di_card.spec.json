@@ -1,0 +1,130 @@
+{
+ "schema": "device-spec/1.0",
+ "name": "PLC_DI_CARD",
+ "image": "ill_plc_di_card.png",
+ "scale": {
+  "mm_per_px": 0.0635
+ },
+ "body_px": [
+  56.0,
+  56.0,
+  816.0,
+  1544.0
+ ],
+ "preset": "illustration",
+ "graphics": true,
+ "pins": [
+  {
+   "name": "DI0",
+   "side": "top",
+   "x_px": 156.0,
+   "y_px": 148.0,
+   "group": "DI-A"
+  },
+  {
+   "name": "DI1",
+   "side": "top",
+   "x_px": 236.0,
+   "y_px": 148.0,
+   "group": "DI-A"
+  },
+  {
+   "name": "DI2",
+   "side": "top",
+   "x_px": 316.0,
+   "y_px": 148.0,
+   "group": "DI-A"
+  },
+  {
+   "name": "DI3",
+   "side": "top",
+   "x_px": 396.0,
+   "y_px": 148.0,
+   "group": "DI-A"
+  },
+  {
+   "name": "DI4",
+   "side": "top",
+   "x_px": 476.0,
+   "y_px": 148.0,
+   "group": "DI-A"
+  },
+  {
+   "name": "DI5",
+   "side": "top",
+   "x_px": 556.0,
+   "y_px": 148.0,
+   "group": "DI-A"
+  },
+  {
+   "name": "DI6",
+   "side": "top",
+   "x_px": 636.0,
+   "y_px": 148.0,
+   "group": "DI-A"
+  },
+  {
+   "name": "DI7",
+   "side": "top",
+   "x_px": 716.0,
+   "y_px": 148.0,
+   "group": "DI-A"
+  },
+  {
+   "name": "DI8",
+   "side": "bottom",
+   "x_px": 156.0,
+   "y_px": 1452.0,
+   "group": "DI-B"
+  },
+  {
+   "name": "DI9",
+   "side": "bottom",
+   "x_px": 236.0,
+   "y_px": 1452.0,
+   "group": "DI-B"
+  },
+  {
+   "name": "DI10",
+   "side": "bottom",
+   "x_px": 316.0,
+   "y_px": 1452.0,
+   "group": "DI-B"
+  },
+  {
+   "name": "DI11",
+   "side": "bottom",
+   "x_px": 396.0,
+   "y_px": 1452.0,
+   "group": "DI-B"
+  },
+  {
+   "name": "DI12",
+   "side": "bottom",
+   "x_px": 476.0,
+   "y_px": 1452.0,
+   "group": "DI-B"
+  },
+  {
+   "name": "DI13",
+   "side": "bottom",
+   "x_px": 556.0,
+   "y_px": 1452.0,
+   "group": "DI-B"
+  },
+  {
+   "name": "DI14",
+   "side": "bottom",
+   "x_px": 636.0,
+   "y_px": 1452.0,
+   "group": "DI-B"
+  },
+  {
+   "name": "COM",
+   "side": "bottom",
+   "x_px": 716.0,
+   "y_px": 1452.0,
+   "group": "DI-B"
+  }
+ ]
+}

@@ -1,0 +1,10 @@
+﻿name,side,offset_mm,x_mm,y_mm,x_px,y_px,kind,label,group
+L1,top,,,,180,200,,,T
+L2,top,,,,400,200,,,T
+L3,top,,,,620,200,,,T
+12,bottom,,,,180,1616,,,B1
+11,bottom,,,,400,1616,,,B1
+14,bottom,,,,620,1616,,,B1
+22,bottom,,,,180,1744,,,B2
+21,bottom,,,,400,1744,,,B2
+24,bottom,,,,620,1744,,,B2

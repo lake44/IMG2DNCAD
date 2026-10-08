@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:imgvec:schema:device-spec:1.0",
+  "title": "device-spec/1.0 — 장치 명세 (사람이 쓰거나 `imgvec device pick`이 만드는 입력)",
+  "description": "그림 하나와 접속점·축척·본체 지정을 묶은 입력. `imgvec device build --spec`이 읽는다. 접속점은 변+변을 따른 거리(offset_mm), mm 좌표(x_mm·y_mm), 그림 픽셀 좌표(x_px·y_px) 중 하나로 지정한다. side를 생략하면 가장 가까운 변을 고른다. side에는 top·bottom·left·right 외에 상·하·좌·우 같은 별칭도 읽는다.",
+  "type": "object",
+  "required": ["schema", "name"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "type": "string", "pattern": "^device-spec/1\\." },
+    "name": { "type": "string" },
+    "image": { "type": ["string", "null"], "description": "그림 파일 경로. 명세 파일 위치 기준 상대 경로." },
+    "scale": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "축척 지정 방법 중 하나(우선순위: mm_per_px > ref > body_width_mm > pin_pitch_mm).",
+      "properties": {
+        "mm_per_px": { "type": "number", "exclusiveMinimum": 0, "description": "원본 픽셀 1개의 길이(mm)" },
+        "ref": { "type": "array", "items": { "type": "number" }, "minItems": 5, "maxItems": 5, "description": "[x1, y1, x2, y2, 실제 거리 mm]" },
+        "body_width_mm": { "type": "number", "exclusiveMinimum": 0, "description": "body_px 가로 폭의 실제 길이(mm)" },
+        "pin_pitch_mm": { "type": "number", "exclusiveMinimum": 0, "description": "같은 줄 접속점의 실제 간격(mm). 접속점에 x_px·group 필요." }
+      }
+    },
+    "body_px": {
+      "type": ["array", "null"],
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4,
+      "description": "본체 사각형 [x0, y0, x1, y1] (원본 픽셀). 없으면 도형에서 추정."
+    },
+    "preset": { "enum": ["auto", "lineart", "illustration", "photo"] },
+    "graphics": { "type": "boolean", "description": "false면 외형 도형 없이 본체와 접속점만 만든다." },
+    "pins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "side": { "type": "string" },
+          "offset_mm": { "type": "number", "description": "변을 따른 거리(mm): 위·아래 변은 왼쪽에서, 왼쪽·오른쪽 변은 위에서" },
+          "x_mm": { "type": "number" },
+          "y_mm": { "type": "number" },
+          "x_px": { "type": "number" },
+          "y_px": { "type": "number" },
+          "kind": { "type": "string", "default": "electrical" },
+          "label": { "type": "string" },
+          "group": { "type": "string" }
+        }
+      }
+    }
+  }
+}
