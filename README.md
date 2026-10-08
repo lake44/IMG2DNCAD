@@ -1,16 +1,19 @@
 # imgvec — 그림 → CAD 벡터 → DNCAD 장치(블랙박스 + 장치 접속점)
 
-DNCAD 장치 생성 프로그램 작업 계획서의 **0~2단계** 산출물입니다.
-그림 파일을 직선·호·원으로 이루어진 벡터로 바꾸고(1단계), 접속점·본체·축척을 더해 검증된 **장치 모델**과 **DNCAD 배치 명세**를 만듭니다(2단계).
-DNCAD 쪽은 배치 명세를 읽는 어댑터로만 연결하며, 시험용 `.dncadbak` 생성기가 들어 있습니다(실험, 아직 DNCAD 가져오기 미확인).
+DNCAD 장치 생성 프로그램 작업 계획서의 **0~6단계** 산출물입니다.
+그림 파일을 직선·호·원으로 이루어진 벡터로 바꾸고(1단계), 접속점·본체·축척을 더해 검증된 **장치 모델**과 **DNCAD 배치 명세**를 만들며(2단계),
+그 명세를 DNCAD 백업(`.dncadbak`)으로 내보냅니다(3단계). **2026-10-08에 복원을 확인했습니다** — 손으로 만든 백업이 DNCAD 새 프로젝트로
+모습 그대로 들어갑니다(장치 1개 기준). 이미 있는 프로젝트에 더하는 `merge`도 있으나 그 복원은 아직 확인하지 못했습니다.
 
 | 단계 | 상태 | 어디에 |
 | --- | --- | --- |
-| 0 조사·준비 | 완료 (가져오기 시험은 사용자 확인 대기) | `docs/DNCAD-연동-조사서.md`, `samples/set/`, `docs/장치-모델-스키마.md` |
+| 0 조사·준비 | 완료 | `docs/DNCAD-연동-조사서.md`, `samples/set/`, `docs/장치-모델-스키마.md` |
 | 1 벡터화 엔진 | 완료 | 아래 ‘1단계’ |
 | 2 장치 모델 | 완료 | 아래 ‘2단계’ |
-| 3 DNCAD 어댑터 | 시험 키트(실험) | 아래 ‘DNCAD 시험’ |
-| 4 자동 인식 · 5 GUI · 6 배포 | 아직 | |
+| 3 DNCAD 어댑터 | 두 길 **다 통함** — `.dncadbak` 복원(새·합치기)과 편집기 API 전송 | 아래 ‘3단계’ |
+| 4 자동 인식 | 본체·접속점·**이름**까지 자동 — 실제 도면·사진 다섯 모두 100%, 샘플 190/220 | 아래 ‘4단계’, `docs/자동-인식-성능.md` |
+| 5 GUI | 작업대 창 하나로 그림 → 장치 → 백업 | 아래 ‘5단계’ |
+| 6 배포 | 꾸러미·윈도우 실행 파일·CI | `docs/배포.md` |
 
 ## 설치
 
@@ -20,8 +23,67 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1          # 이후 `imgvec` 명령을 바로 쓸 수 있습니다
 ```
 
+파이썬이 없는 PC에는 **실행 파일**(`imgvec-windows.zip`)을 건넵니다 — 풀고 `imgvec.exe`. 만드는 법은 `docs/배포.md`.
+
 Python 3.11 이상. 의존성 고정본은 `requirements-lock.txt`입니다. 한글 경로에서도 동작하도록 이미지는 Pillow로 읽고 씁니다.
 콘솔에서 한글이 깨지면 `python -X utf8 -m imgvec …`로 실행하세요.
+
+## 5단계: 작업대 (창 하나로)
+
+```powershell
+imgvec device studio 그림.png --name MY-DEVICE     # 열면 자동 인식부터 한 번 돌립니다
+imgvec device studio 그림.spec.json                # 하던 것을 이어서
+```
+
+| 화면 | 하는 일 |
+| --- | --- |
+| 윗줄 | 모드(접속점 P · 본체 B · 축척 두 점 R) · 자동 인식(A) · 축척 · 장치 만들기(G) · 저장(S) · DNCAD 백업 |
+| 가운데 | 그림. 왼쪽 클릭=접속점 찍기, 오른쪽 클릭=지우기, 휠=확대 |
+| 오른쪽 | 접속점 목록. 더블클릭=이름 바꾸기, Delete=지우기 |
+| 아래 | 접속점 수 · 본체 · 축척 · 블랙박스 크기 · 검증 오류·경고 |
+
+화면 없이 같은 길을 한 번에 가려면:
+
+```powershell
+imgvec device run 그림.png --name MY-DEVICE --pin-pitch-mm 5.08 -o out\MY-DEVICE --backup out\MY.dncadbak
+imgvec device run 그림.png --pin-pitch-mm 5.08 --merge-into 작업중.dncadbak --tag -ZZ42
+```
+
+논리는 `imgvec.studio.Workbench`에 모여 있어 화면 없이도 그대로 쓸 수 있습니다 (`run_pipeline`).
+
+## 4단계: 자동 인식
+
+클릭하지 않고 그림만 보고 본체·접속점·**단자 이름**까지 찾아 **명세 초안**을 만듭니다.
+
+```powershell
+imgvec device auto 그림.png --name MY-DEVICE --pin-pitch-mm 5.08   # → 그림.spec.json + 그림.pins.csv
+imgvec device auto 그림.png --try-bodies                           # 그림에 액자가 있을 때 (PDF 매뉴얼 캡처)
+imgvec device auto 사진.png --from-labels                          # 제품 실물 사진 — 이름(번호)에서 자리를 정한다
+imgvec device pick 그림.png --edit                                  # 틀린 곳·이름을 고친다
+imgvec device build --spec 그림.spec.json -o out\MY-DEVICE          # 그대로 장치로
+imgvec device autotest samples\set                                 # 정답 있는 샘플로 정확도 재기
+```
+
+| 그림 종류 | 접속점을 얼마나 찾나 (샘플 실측) |
+| --- | --- |
+| 블록도 (변에서 줄기가 뻗은 사각형) | 39/39, 헛검출 0 |
+| 선 그림 (줄기 끝에 원·촘촘한 것 포함) | 52/52, 헛검출 0 |
+| 제품 아이콘 | 18/18, 헛검출 0 |
+| 제품 사진 같은 일러스트 | 81/111, 헛검출 12 |
+| **샘플 합계** | **190/220 (86%)**, 헛검출 12, 변 틀림 0 |
+| **실제 도면·사진** 다섯 (변압기·안전 컨트롤러·PDF 캡처·ABB·**Pilz 실물 사진**) | **8/8 · 16/16 · 12/12 · 16/16 · 24/24, 헛검출 0 — 이름도 전부** |
+
+본체 사각형은 18종 모두 5 px 안에 맞습니다(중앙값 0.5 px). 재는 자는 **변 + 변을 따라 잰 자리** —
+DNCAD 배치 명세가 실제로 쓰는 값입니다(`--xy`로 2차원 거리로도 잴 수 있습니다).
+
+**단자 이름**은 접속점 옆 글자를 읽어 붙입니다(`A1`·`T11`·`PE`·`31`…). 글자 읽기는 **선택 설치**입니다:
+
+```powershell
+python -m pip install "imgvec[ocr]"     # 없으면 이름 자리에 번호(1, 2, 3…)가 붙습니다
+imgvec device auto 그림.png --no-names   # 읽지 않고 번호만
+```
+축척은 그림만으로 알 수 없으니 `--mm-per-px`·`--body-width-mm`·`--pin-pitch-mm` 중 하나를 주세요.
+자세한 수치와 한계는 `docs/자동-인식-성능.md`입니다.
 
 ## 2단계: 그림 → 장치
 
@@ -54,20 +116,41 @@ imgvec device layout out\MY-DEVICE.device.json -o out\MY-DEVICE.layout.json
 - 같은 이름의 접속점은 기본 오류입니다 (생성기 API 규칙). 기존 DNCAD 백업에는 중복이 있어 `--allow-dup-names`로 경고로 낮출 수 있습니다.
 - 샘플 20종 일괄: `imgvec device batch samples\set --remap-lr -o out\set` → `summary.csv`.
 
-## DNCAD 시험 (실험·미검증)
+## 3단계: DNCAD로 보내기
 
-DNCAD 백업(`.dncadbak`)의 구조를 실제 백업에서 읽어 알아냈고, 배치 명세를 시험용 백업으로 내보낼 수 있습니다.
-**DNCAD가 손으로 만든 백업을 받아들이는지는 아직 확인하지 못했습니다.** 새 프로젝트로만 가져와 보세요.
+배치 명세(`*.layout.json`)를 DNCAD로 보내는 길은 **둘이고, 2026-10-08에 둘 다 통했습니다.**
+
+| 길 | 무엇 | 확인 |
+| --- | --- | --- |
+| **백업 파일** (`kit`·`merge`) | `.dncadbak`을 만들어 DNCAD에서 **복원** | 새 프로젝트(장치 1개)·합치기(장치 20개·3쪽) 모두 복원됨 |
+| **편집기 API** (`plan`) | 사용자의 생성기(`api-build.mjs`)에 명세를 넘겨 **바로 그림** | 명령 54개 전부 성공, 장치 2개·접속점 24개 |
 
 ```powershell
-imgvec device kit out\set -o out\시험.dncadbak          # *.layout.json들 → 시험용 백업 (+ 태그 대응표 .map.csv)
-imgvec device check-bak out\시험.dncadbak               # ZIP·해시·행 수·참조·블랙박스 규칙 점검
-imgvec device read-bak 실제백업.dncadbak -o out\real    # 실제 백업의 블랙박스를 읽어 배치 명세로 내보내기
+# 편집기 API로 바로 그리기 (작업 중인 프로젝트에 더한다)
+imgvec device plan out\MY.layout.json --tags MY --at 320 256 -o out\계획.json
+node documents\scripts\dncad\api-build.mjs --project <id> --page "<쪽>" --name <이름> out\계획.json
+#   → documents\tmp\dncad\api-<이름>.js 를 Playwright MCP browser_run_code_unsafe 로 실행
+```
+
+```powershell
+# 새 프로젝트로 복원할 백업 만들기
+imgvec device kit out\set -o out\장치들.dncadbak          # *.layout.json들 → 백업 (+ 태그 대응표 .map.csv)
+
+# 이미 있는 프로젝트에 장치를 더하기 (원본 파일은 읽기만 합니다)
+imgvec device merge 작업중.dncadbak out\set -o out\작업중+장치.dncadbak
+
+imgvec device check-bak out\장치들.dncadbak              # ZIP·해시·행 수·참조·블랙박스 규칙 점검
+imgvec device read-bak 실제백업.dncadbak -o out\real     # 실제 백업의 블랙박스를 읽어 배치 명세로 내보내기
 python tools\make_dncad_testkit.py --control 실제백업.dncadbak   # 시험 키트: out\dncad_testkit\ (README.txt 참고)
 python tools\extract_dncad_template.py 실제백업.dncadbak          # DNCAD 스키마가 바뀌면 템플릿 갱신
 ```
 
-자세한 내용과 근거는 `docs/DNCAD-연동-조사서.md`입니다.
+`merge`는 바탕 백업의 행·심볼·부품·양식과 `schemaVersion`·`apiBuild` 표기를 **그대로 두고** 쪽을 뒤에 붙여 그 위에 블랙박스를 놓습니다.
+장치 태그는 기존 장치와 겹치지 않는 번호를 골라 붙이고(`--tag-prefix`, 직접 주려면 `--tags`), 행 id가 겹치면 멈춥니다.
+새 쪽은 첫 쪽을 본보기로 복사해 양식·구조 참조를 잇지만, 작도 범위는 A4 가로(1900×1344 단위)를 기본으로 씁니다 —
+프로젝트 용지가 다르면 `--page-w`·`--page-h`로 지정하세요.
+
+**아직 확인하지 못한 것:** 블랙박스 좌·우 변 접속점, 접속점 이름 중복. 자세한 내용과 근거는 `docs/DNCAD-연동-조사서.md`입니다.
 
 ## 1단계: 벡터화
 
@@ -152,15 +235,19 @@ imgvec selftest            # 합성 샘플로 정확도 점검 (계획서 9장 �
 - 사진·그림자·그라데이션이 많은 그림은 경계가 많아 결과가 복잡해집니다 (`photo`는 실험적). 사진은 외형 윤곽만 의미가 있습니다.
 - 기울어진 스캔의 자동 보정(deskew)과 원근 보정은 아직 없습니다.
 - 외형 도형은 DNCAD 블랙박스에 들어가지 않습니다(블랙박스는 크기를 가진 직사각형). 외형은 주석 SVG·확인용입니다.
-- 접속점은 사람이 지정합니다 (자동 인식은 4단계).
+- 접속점 자동 인식(4단계)은 도면 심볼(블록도·선 그림·아이콘)에서는 빠짐없이 찾지만, 나사가 잘게 갈라지는 2열 제품 사진에서는 놓칩니다.
+- 단자 이름 읽기는 `imgvec[ocr]`을 깔아야 하고, 글자가 작거나 선에 가려지면 읽지 못할 수 있습니다 (그 자리는 번호가 붙습니다).
+- 제품 실물 사진은 `--from-labels`로 **이름에서 자리를 정합니다** (Pilz PNOZ X3 실측 24/24). 도면 심볼에는 쓰지 마세요 — 전압 표시를 단자로 오인합니다.
 
 ## 폴더
 
 ```
-src/imgvec/     엔진·장치 모델·검증·배치 명세·DNCAD 백업 어댑터·CLI
+src/imgvec/     엔진·장치 모델·검증·배치 명세·DNCAD 백업 어댑터·자동 인식·이름 읽기·작업대·CLI
   data/         DNCAD 백업 템플릿 (tools/extract_dncad_template.py로 생성)
-tests/          pytest (141개)
-docs/           DNCAD-연동-조사서.md, 장치-모델-스키마.md, schema/*.json (JSON Schema)
+tests/          pytest (222개)
+docs/           DNCAD-연동-조사서.md, 장치-모델-스키마.md, 자동-인식-성능.md, 배포.md, schema/*.json
+packaging/      PyInstaller 설정 (파이썬 없는 PC용 실행 파일)
+.github/        CI·릴리스 흐름
 samples/        set (정답 있는 20종 + README), synthetic (1단계 정확도용), real
 tools/          샘플 세트 생성, DNCAD 시험 키트, 백업 템플릿 추출
 out/            결과 (git 제외)
@@ -169,9 +256,10 @@ out/            결과 (git 제외)
 ## 개발
 
 ```powershell
-python -m pytest          # 141개, 약 25초
+python -m pytest          # 222개(220 통과 · 화면 시험 2파일은 화면 없으면 건너뜀), 약 3분 30초
 ruff check src tests tools
 ```
 
 - 린트 규칙과 의존성은 `pyproject.toml`, 고정 버전은 `requirements-lock.txt`입니다.
+- 건네는 법(꾸러미·실행 파일·태그로 릴리스)은 `docs/배포.md`. 미는 대로 GitHub Actions가 윈도우·리눅스에서 시험합니다.
 - 좌표·단위·검증 코드의 약속은 `docs/장치-모델-스키마.md`, DNCAD 쪽 근거와 열린 질문은 `docs/DNCAD-연동-조사서.md`입니다.

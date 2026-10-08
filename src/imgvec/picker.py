@@ -92,6 +92,33 @@ def save_picked(state: PickerState, spec_path: str | FsPath, name: str, image: s
 # ======================================================================== 화면
 
 
+def draw_scene(canvas, img, zoom: float, *, body=None, ref=None, pins=(), highlight: int | None = None):
+    """캔버스에 그림·본체·축척선·접속점을 그린다. 되돌려 주는 PhotoImage는 호출한 쪽이 붙들고 있어야 한다."""
+    from PIL import Image, ImageTk
+
+    W, H = img.size
+    canvas.delete("all")
+    photo = ImageTk.PhotoImage(img.resize((max(1, int(W * zoom)), max(1, int(H * zoom))), Image.LANCZOS))
+    canvas.create_image(0, 0, image=photo, anchor="nw")
+    canvas.configure(scrollregion=(0, 0, W * zoom, H * zoom))
+    if body:
+        x0, y0, x1, y1 = (v * zoom for v in body)
+        canvas.create_rectangle(x0, y0, x1, y1, outline="#0a0", width=2)
+    if ref:
+        a, b, c, d, mm = ref
+        canvas.create_line(a * zoom, b * zoom, c * zoom, d * zoom, fill="#06f", width=2)
+        canvas.create_text((a + c) / 2 * zoom, (b + d) / 2 * zoom - 8, text=f"{mm:g} mm", fill="#06f")
+    for i, (px, py, pname) in enumerate(pins):
+        if px is None or py is None:
+            continue
+        x, y = px * zoom, py * zoom
+        color = "#06f" if i == highlight else "#d00"
+        r = 7 if i == highlight else 5
+        canvas.create_oval(x - r, y - r, x + r, y + r, outline=color, width=2)
+        canvas.create_text(x + 8, y - 8, text=pname, fill=color, anchor="sw", font=("Malgun Gothic", 10, "bold"))
+    return photo
+
+
 def run_picker(
     image_path: str | FsPath,
     spec_path: str | FsPath,
@@ -107,7 +134,7 @@ def run_picker(
     import traceback
     from tkinter import messagebox, simpledialog
 
-    from PIL import Image, ImageTk
+    from PIL import Image
 
     from .imageio import load_image
 
@@ -172,22 +199,8 @@ def run_picker(
         return canvas.canvasx(ev.x) / zoom[0], canvas.canvasy(ev.y) / zoom[0]
 
     def redraw() -> None:
-        z = zoom[0]
-        canvas.delete("all")
-        photo_ref[0] = ImageTk.PhotoImage(img.resize((max(1, int(W * z)), max(1, int(H * z))), Image.LANCZOS))
-        canvas.create_image(0, 0, image=photo_ref[0], anchor="nw")
-        canvas.configure(scrollregion=(0, 0, W * z, H * z))
-        if state.body:
-            x0, y0, x1, y1 = (v * z for v in state.body)
-            canvas.create_rectangle(x0, y0, x1, y1, outline="#0a0", width=2)
-        if state.ref:
-            a, b, c, d, mm = state.ref
-            canvas.create_line(a * z, b * z, c * z, d * z, fill="#06f", width=2)
-            canvas.create_text((a + c) / 2 * z, (b + d) / 2 * z - 8, text=f"{mm:g} mm", fill="#06f")
-        for p in state.pins:
-            x, y = p["x_px"] * z, p["y_px"] * z
-            canvas.create_oval(x - 5, y - 5, x + 5, y + 5, outline="#d00", width=2)
-            canvas.create_text(x + 8, y - 8, text=p["name"], fill="#d00", anchor="sw", font=("Malgun Gothic", 10, "bold"))
+        photo_ref[0] = draw_scene(canvas, img, zoom[0], body=state.body, ref=state.ref,
+                                  pins=[(p["x_px"], p["y_px"], p["name"]) for p in state.pins])
         status.set(f"접속점 {len(state.pins)}개 · 본체 {'지정됨' if state.body else '미지정'} · 축척 {'지정됨' if state.ref else '미지정'}   |   {HELP[mode.get()]}")
 
     def on_press(ev) -> None:

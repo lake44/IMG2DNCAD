@@ -15,10 +15,13 @@ import numpy as np
 
 from . import __version__
 from .calib import Calibration, CalibrationError, from_pin_pitch, from_two_points, from_width, manual
+from .detect import PinHit, detect_body, detect_device, detect_pins, name_pins
 from .dncad_rules import DEFAULT_RULES, DncadRules, normalize_side
 from .geom import Circle, Primitive, sample_primitive, scale_primitive
 from .layout import dncad_layout
 from .model import Body, DeviceModel
+from . import ocr
+from .labels import classify_kind, labels_illustration, labels_lineart
 from .params import Params
 from .pins import PinSpec, resolve_pins
 from .pipeline import VectorResult, convert_image
@@ -148,7 +151,11 @@ def _poly_area(pts: np.ndarray) -> float:
 
 def guess_body_px(prims: list[Primitive], size: tuple[int, int]) -> tuple[tuple[float, float, float, float], str] | None:
     """결과 도형에서 본체 사각형을 짐작한다.
+    0) 조각난 변을 모아 네 변이 덮인 가장 큰 사각형 (detect.detect_body — 샘플 18종 모두 5px 이내)
     1) 직사각형에 가까운 가장 큰 닫힌 경로  2) 길고 반듯한 선들이 둘러싼 영역.  못 찾으면 None."""
+    box = detect_body(prims, size)
+    if box is not None:
+        return box, "auto-rect"
     W, H = size
     img_area = float(W * H)
     best = None
@@ -320,3 +327,72 @@ def write_build_outputs(res: BuildResult, base: str | FsPath) -> dict[str, FsPat
     lines = [str(i) for i in res.issues] or ["문제 없음"]
     paths["issues"].write_text("\n".join(lines) + "\n", encoding="utf-8")
     return paths
+
+
+# =============================================================================== 자동 인식 (4단계)
+def label_map(rgb: np.ndarray, preset: str = "auto") -> tuple[np.ndarray, str]:
+    """원본 해상도의 색 영역 지도. 접속점 후보(색 덩이)를 찾는 데 쓴다."""
+    params = Params(preset=preset)
+    kind = preset if preset in ("lineart", "illustration") else classify_kind(rgb)
+    cfg = params.resolve(kind)
+    labels, _ = (labels_lineart if kind == "lineart" else labels_illustration)(rgb, cfg)
+    return labels, kind
+
+
+def auto_spec(rgb: np.ndarray, *, name: str = "", image: str | None = None, preset: str = "auto",
+              vector: VectorResult | None = None, pin_prefix: str = "",
+              read_names: bool = True, try_bodies: bool = False,
+              from_labels: bool = False) -> tuple[DeviceSpec, dict]:
+    """그림만 보고 명세 초안을 만든다 (본체·접속점 자동). 둘째 값은 무엇을 어떻게 찾았는지 적은 쪽지.
+
+    read_names면 접속점 옆 글자를 읽어 원본 이름을 붙인다 (엔진이 없으면 번호를 그대로 둔다).
+    try_bodies면 본체 사각형 후보를 여럿 놓고 접속점을 가장 많이 찾는 것을 고른다 — 그림에 **액자**가
+    있을 때(PDF 매뉴얼 캡처) 쓴다. 액자가 없는 그림에서는 안쪽 사각형이 잡음을 끌어들여 더 나쁘다.
+    from_labels면 접속점을 자리가 아니라 **이름(번호)에서** 만든다 — 제품 실물 사진처럼 자리는 흐려도
+    번호는 선명할 때 쓴다. 도면 심볼에는 쓰지 않는다 (전압 표시를 단자로 오인한다).
+    축척은 그림만으로는 알 수 없다 — 명세를 쓰고 나서 사람이 scale을 채워야 한다.
+    """
+    H, W = rgb.shape[:2]
+    vec = vector or convert_image(rgb, Params(preset=preset))
+    labels, _ = label_map(rgb, preset)
+    if try_bodies:
+        body, found = detect_device(vec.prims, labels, (W, H))
+        source = "auto-rect-best"
+    else:
+        body, source = detect_body(vec.prims, (W, H)), "auto-rect"
+        found = detect_pins(vec.prims, labels, body, (W, H)) if body else []
+    note: dict = {"size_px": [W, H], "preset": vec.kind, "body_source": source if body else "image"}
+    if body is None:
+        body = (0.0, 0.0, float(W), float(H))
+        found = detect_pins(vec.prims, labels, body, (W, H))
+    if from_labels:
+        found_by_name = ocr.pins_from_labels(rgb, vec.prims, body) if ocr.available() else []
+        if found_by_name:
+            ordered = name_pins([PinHit(sd, x, y, "label", 0.0, 1.0) for sd, x, y, _nm in found_by_name])
+            by_pos = {(h.side, round(h.x_px, 1), round(h.y_px, 1)): h for h in ordered}
+            rows = sorted(found_by_name, key=lambda t: list(by_pos).index((t[0], round(t[1], 1), round(t[2], 1)))
+                          if (t[0], round(t[1], 1), round(t[2], 1)) in by_pos else 0)
+            pins = [PinSpec(name=nm, side=sd, x_px=round(x, 1), y_px=round(y, 1), line=i)
+                    for i, (sd, x, y, nm) in enumerate(rows, start=1)]
+            note.update({"pins": len(pins), "named": len(pins), "pin_kinds": {"label": len(pins)},
+                         "pitch_px": None, "source": "labels"})
+            return DeviceSpec(name=name or "device", image=image,
+                              body_px=tuple(round(v, 1) for v in body), preset=preset, pins=pins), note
+        note["labels"] = "이름 줄을 찾지 못했습니다"
+    hits = name_pins(found)
+    read: dict[int, str] = {}
+    if read_names and hits:
+        if ocr.available():
+            read = ocr.read_pin_names(rgb, body, hits)
+        else:
+            note["ocr"] = "엔진 없음"
+    pins = [PinSpec(name=read.get(i - 1) or f"{pin_prefix}{i}", side=h.side,
+                    x_px=round(h.x_px, 1), y_px=round(h.y_px, 1), line=i)
+            for i, h in enumerate(hits, start=1)]
+    note["pins"] = len(pins)
+    note["named"] = len(read)
+    note["pin_kinds"] = {k: sum(1 for h in hits if h.kind == k) for k in {h.kind for h in hits}}
+    note["pitch_px"] = round(float(np.median([h.pitch for h in hits])), 1) if hits else None
+    spec = DeviceSpec(name=name or "device", image=image, body_px=tuple(round(v, 1) for v in body),
+                      preset=preset, pins=pins)
+    return spec, note

@@ -1,0 +1,65 @@
+name: 내보내기
+
+# v로 시작하는 태그를 밀면 꾸러미(whl·tar.gz)와 윈도우 실행 파일을 만들어 릴리스에 붙인다.
+#   git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  wheel:
+    name: 꾸러미 (whl · tar.gz)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install build
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+  windows-exe:
+    name: 윈도우 실행 파일
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -e ".[dev,pdf]" pyinstaller
+      - run: python -m PyInstaller --noconfirm packaging/imgvec.spec
+      - name: 만든 실행 파일이 도는지
+        run: |
+          dist\imgvec\imgvec.exe --version
+          dist\imgvec\imgvec.exe device run samples\set\block_plc.png --name PLC --pin-pitch-mm 5.08 -o out\PLC --backup out\PLC.dncadbak
+          dist\imgvec\imgvec.exe device check-bak out\PLC.dncadbak
+      - name: 묶기
+        run: Compress-Archive -Path dist\imgvec\* -DestinationPath imgvec-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: imgvec-windows
+          path: imgvec-windows.zip
+
+  release:
+    name: 릴리스에 붙이기
+    needs: [wheel, windows-exe]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/dist/*
+            artifacts/imgvec-windows/*
+          generate_release_notes: true

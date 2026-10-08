@@ -1,0 +1,53 @@
+name: 검사
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} · Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: 설치
+        run: python -m pip install -e ".[dev,pdf]"
+      - name: 린트
+        run: python -m ruff check src tests tools
+      - name: 시험
+        run: python -X utf8 -m pytest -q
+        # 화면이 필요한 시험(Tkinter)은 화면이 없으면 스스로 건너뛴다
+
+  build:
+    name: 꾸러미 만들기
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install build
+      - run: python -m build
+      - name: 만든 꾸러미로 한 바퀴 돌려 본다
+        run: |
+          python -m venv /tmp/v
+          /tmp/v/bin/python -m pip install dist/*.whl
+          /tmp/v/bin/imgvec --version
+          /tmp/v/bin/imgvec device run samples/set/block_plc.png --name PLC --pin-pitch-mm 5.08 \
+            -o /tmp/out/PLC --backup /tmp/out/PLC.dncadbak
+          /tmp/v/bin/imgvec device check-bak /tmp/out/PLC.dncadbak
+      - uses: actions/upload-artifact@v4
+        with:
+          name: imgvec-dist
+          path: dist/*

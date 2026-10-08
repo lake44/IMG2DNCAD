@@ -5,6 +5,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 out/
+dist/
+build/
+*.dncadbak
 
 # 제조사(Pilz) 카탈로그 사진과 그 열화본: 제3자 저작물이라 공개 저장소에 올리지 않는다 (samples/set/README.md 참고)
 samples/set/real_pilz_pnoz_x3p.jpg

@@ -179,11 +179,11 @@ def test_spec_json_roundtrip_and_relative_image(tmp_path):
         DeviceSpec.load(bad)
 
 
-def test_guess_body_finds_largest_rectangular_closed_path():
+def test_guess_body_finds_the_largest_rectangle():
     big = Path([LineSeg((100, 100), (900, 100)), LineSeg((900, 100), (900, 700)), LineSeg((900, 700), (100, 700)), LineSeg((100, 700), (100, 100))], True)
     small = Path([LineSeg((200, 200), (300, 200)), LineSeg((300, 200), (300, 260)), LineSeg((300, 260), (200, 260)), LineSeg((200, 260), (200, 200))], True)
     body, how = guess_body_px([small, big], (1000, 800))
-    assert how == "auto-closed-path" and body == pytest.approx((100, 100, 900, 700), abs=2)
+    assert how == "auto-rect" and body == pytest.approx((100, 100, 900, 700), abs=2)   # 4단계 검출기(detect.detect_body)
     assert guess_body_px([small], (1000, 800)) is None
 
 

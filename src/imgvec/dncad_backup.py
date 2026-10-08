@@ -1,8 +1,10 @@
-"""DNCAD 백업(.dncadbak) 읽기·쓰기 — 장치 배치 명세를 DNCAD로 보내 보는 '시험용' 어댑터 (실험).
+"""DNCAD 백업(.dncadbak) 읽기·쓰기 — 장치 배치 명세를 DNCAD로 보내는 어댑터 (3단계).
 
-⚠ 미검증: 형식은 이 PC의 실제 백업(스키마 0070)에서 읽어 낸 것이다. 손으로 만든 백업을 DNCAD가
-'백업 복원'으로 받아들이는지는 아직 확인하지 못했다. 새(빈) 프로젝트로 가져오는 시험에만 쓰고,
-실제 프로젝트에는 쓰지 마라. 근거와 열린 질문은 docs/DNCAD-연동-조사서.md.
+형식은 이 PC의 실제 백업(스키마 0070)에서 읽어 낸 것이다.
+확인된 것 (2026-10-08): 손으로 만든 백업을 DNCAD가 **새 프로젝트로 복원**한다 — 장치 1개(160x112,
+위 4·아래 2) 백업이 기대한 모습 그대로 들어갔다. 그래서 build_backup·write_backup은 시험이 아니다.
+아직 확인하지 못한 것: 여러 장치·여러 쪽 백업, merge_backup으로 **이미 있는 프로젝트에 더한** 백업,
+블랙박스 좌·우 변 접속점, 접속점 이름 중복. 근거와 열린 질문은 docs/DNCAD-연동-조사서.md.
 
 형식 (실측)
   ZIP = manifest.json + project.json + masters.json (모두 UTF-8, 공백 없는 JSON)
@@ -411,6 +413,54 @@ def _check_layout(lay: dict, rules: DncadRules) -> None:
         raise KitError(f"'{name}': 접속점 이름이 중복됩니다: {', '.join(dup[:5])} (허용하려면 allow_duplicate_designations)")
 
 
+def resolve_tags(n: int, *, tags: list[str] | None = None, tag_prefix: str = "-ZZ", used: Iterable[str] = (), digits: int = 2) -> list[str]:
+    """장치 n개의 태그를 정한다. tags를 주면 그대로 검사만 하고, 없으면 접두 + 번호로 비어 있는 번호를 찾아 붙인다.
+    used는 이미 쓰인 태그(기존 프로젝트의 장치 태그)다 — 합칠 때 번호가 겹치지 않게 한다."""
+    taken = {str(t) for t in used}
+    if tags is not None:
+        out = list(tags)
+        if len(out) != n:
+            raise KitError(f"태그 {len(out)}개와 장치 {n}개의 수가 다릅니다")
+        if len(set(out)) != len(out):
+            raise KitError("태그가 중복됩니다")
+        clash = [t for t in out if t in taken]
+        if clash:
+            raise KitError(f"기존 프로젝트에 이미 있는 태그입니다: {', '.join(clash[:5])}")
+        return out
+    out, i = [], 1
+    while len(out) < n:
+        t = f"{tag_prefix}{i:0{digits}d}"
+        i += 1
+        if t not in taken:
+            taken.add(t)
+            out.append(t)
+    return out
+
+
+def _place_devices(writer: "_Writer", lays: list[dict], tag_list: list[str], page_ids: list[str],
+                   pos: list[tuple[int, int, int]], *, labels: bool, describe: bool, z_start: int = 0) -> list[KitDevice]:
+    """배치 명세들을 장치 행(블랙박스 + 접속점 + 배치 + 앵커, 선택적으로 이름 글자)으로 쓴다."""
+    kit: list[KitDevice] = []
+    z = z_start
+    for lay, tag, (pg_i, bx, by) in zip(lays, tag_list, pos):
+        w, h = lay["box"]["w"], lay["box"]["h"]
+        page_id = page_ids[pg_i]
+        did = writer.device(tag)
+        name = lay.get("name") or ""
+        bb = writer.component(did, _BLACK_BOX, name if (describe and name) else None)
+        writer.placement(page_id, bb, bx, by, 0, size={"h": h, "w": w}, main=True)
+        for p in lay["pins"]:
+            writer.pin(did, page_id, bx, by, p)
+        if labels and name:
+            tid, tts = writer.ids.new()
+            writer.rows["annotations"].append({"x": bx + w // 2, "y": by - 32, "id": tid, "kind": "TEXT", "text": name,
+                                               "style": {"font": "malgun", "align": "center", "color": "yellow"}, "page_id": page_id,
+                                               "z_order": z, "geometry": None, "rotation": 0, "created_at": tts})
+            z += 1
+        kit.append(KitDevice(tag, name, pg_i, bx, by, w, h, len(lay["pins"])))
+    return kit
+
+
 def plan_pages(
     sizes: list[tuple[int, int]],
     *,
@@ -453,18 +503,15 @@ def build_backup(
     rules: DncadRules = DEFAULT_RULES,
     template: dict | None = None,
 ) -> KitResult:
-    """배치 명세(dncad-device-layout/1.0)들을 담은 시험용 DNCAD 백업을 만든다. 새 ID·시각으로 처음부터 만든다.
+    """배치 명세(dncad-device-layout/1.0)들을 담은 DNCAD 백업을 만든다. 새 ID·시각으로 처음부터 만들므로 **새 프로젝트로 복원**한다.
+    이미 있는 프로젝트에 더하려면 merge_backup을 쓴다.
     labels   블랙박스 위에 장치 이름 글자(주석 TEXT)를 둔다.
     describe 블랙박스 컴포넌트의 description에 장치 이름을 쓴다 (실제 백업은 모두 비워 둠 → 기본 꺼짐)."""
     tpl = template or load_template()
     lays = list(layouts)
     if not lays:
         raise KitError("장치가 하나도 없습니다")
-    tag_list = list(tags) if tags else [f"{tag_prefix}{i:02d}" for i in range(1, len(lays) + 1)]
-    if len(tag_list) != len(lays):
-        raise KitError(f"태그 {len(tag_list)}개와 장치 {len(lays)}개의 수가 다릅니다")
-    if len(set(tag_list)) != len(tag_list):
-        raise KitError("태그가 중복됩니다")
+    tag_list = resolve_tags(len(lays), tags=tags, tag_prefix=tag_prefix)
     for lay in lays:
         _check_layout(lay, rules)
     defs = {g["key"]: g["oldDefinitionId"] for g in tpl["globalDefinitions"]}
@@ -495,24 +542,7 @@ def build_backup(
                               "function_node_id": node_map.get(pg.get("function_node_id")),
                               "location_node_id": node_map.get(pg.get("location_node_id"))})
 
-    kit: list[KitDevice] = []
-    z = 0
-    for lay, tag, (pg_i, bx, by) in zip(lays, tag_list, pos):
-        w, h = lay["box"]["w"], lay["box"]["h"]
-        page_id = page_ids[pg_i]
-        did = writer.device(tag)
-        name = lay.get("name") or ""
-        bb = writer.component(did, _BLACK_BOX, name if (describe and name) else None)
-        writer.placement(page_id, bb, bx, by, 0, size={"h": h, "w": w}, main=True)
-        for p in lay["pins"]:
-            writer.pin(did, page_id, bx, by, p)
-        if labels and name:
-            tid, tts = ids.new()
-            rows["annotations"].append({"x": bx + w // 2, "y": by - 32, "id": tid, "kind": "TEXT", "text": name,
-                                        "style": {"font": "malgun", "align": "center", "color": "yellow"}, "page_id": page_id,
-                                        "z_order": z, "geometry": None, "rotation": 0, "created_at": tts})
-            z += 1
-        kit.append(KitDevice(tag, name, pg_i, bx, by, w, h, len(lay["pins"])))
+    kit = _place_devices(writer, lays, tag_list, page_ids, pos, labels=labels, describe=describe)
 
     masters = {"symbols": [], "globalDefinitions": tpl["globalDefinitions"], "parts": [], "forms": []}
     project_bytes = _dump({"rows": rows})
@@ -527,13 +557,7 @@ def build_backup(
         "integrity": {"project.json": hashlib.sha256(project_bytes).hexdigest(), "masters.json": hashlib.sha256(masters_bytes).hexdigest()},
         "warnings": [],
     }
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for member, payload in (("manifest.json", _dump(manifest)), ("project.json", project_bytes), ("masters.json", masters_bytes)):
-            info = zipfile.ZipInfo(member, date_time=(1980, 1, 1, 0, 0, 0))   # 항상 같은 바이트가 나오게
-            info.compress_type = zipfile.ZIP_DEFLATED
-            zf.writestr(info, payload)
-    data = buf.getvalue()
+    data = _pack(manifest, project_bytes, masters_bytes)
     issues = verify_backup(data, rules)
     if has_errors(issues):
         raise KitError("만든 백업이 자체 점검을 통과하지 못했습니다: " + "; ".join(str(i) for i in issues if i.severity == "error"))
@@ -544,8 +568,138 @@ def _dump(obj: Any) -> bytes:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
+def _pack(manifest: dict, project_bytes: bytes, masters_bytes: bytes) -> bytes:
+    """세 파일을 백업 ZIP으로 묶는다. 같은 내용이면 항상 같은 바이트가 나온다 (시각 고정)."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for member, payload in (("manifest.json", _dump(manifest)), ("project.json", project_bytes), ("masters.json", masters_bytes)):
+            info = zipfile.ZipInfo(member, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            zf.writestr(info, payload)
+    return buf.getvalue()
+
+
 def write_backup(path: str | Path, layouts: Iterable[dict], **kw: Any) -> KitResult:
     res = build_backup(layouts, **kw)
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(res.data)
+    return res
+
+
+# --------------------------------------------------------------------------- 합치기
+def _global_defs(masters: dict) -> dict[str, str]:
+    gd = masters.get("globalDefinitions")
+    if not isinstance(gd, list):
+        raise KitError("백업의 masters.json에 globalDefinitions가 없습니다")
+    defs = {g["key"]: g["oldDefinitionId"] for g in gd if isinstance(g, dict) and "key" in g and "oldDefinitionId" in g}
+    for need in (_BLACK_BOX, _DCP):
+        if need not in defs:
+            raise KitError(f"백업의 전역 정의에 '{need}'가 없습니다 — 이 프로젝트에는 블랙박스를 넣을 수 없습니다")
+    return defs
+
+
+def _max_int(rows: list[dict], key: str) -> int:
+    vals = [r[key] for r in rows if isinstance(r.get(key), int)]
+    return max(vals) if vals else -1
+
+
+def merge_backup(
+    base: bytes | str | Path | Backup,
+    layouts: Iterable[dict],
+    *,
+    tags: list[str] | None = None,
+    tag_prefix: str = "-ZZ",
+    page_name: str | None = None,
+    labels: bool = True,
+    describe: bool = False,
+    seed: int | None = None,
+    now: datetime | None = None,
+    rules: DncadRules = DEFAULT_RULES,
+    page_w: int = PAGE_W,
+    page_h: int = PAGE_H,
+) -> KitResult:
+    """이미 있는 DNCAD 백업에 배치 명세의 장치들을 **더해** 새 백업을 만든다 (기존 백업 파일은 건드리지 않는다).
+
+    기존 행·심볼·부품·양식·스키마 표기는 그대로 두고 쪽을 뒤에 붙여 그 위에 블랙박스를 놓는다.
+    태그는 기존 장치 태그와 겹치지 않는 번호를 골라 붙인다.
+    page_name  새로 붙이는 쪽 이름 (기본: 본보기 쪽 이름 + ' (imgvec)')
+    page_w/h   새 쪽의 작도 범위(단위). 기본은 A4 가로 297x210 mm — 프로젝트 용지가 다르면 지정한다."""
+    b = base if isinstance(base, Backup) else read_backup(base)
+    if b.manifest.get("format") != FORMAT:
+        raise KitError(f"백업 형식이 아닙니다 (format={b.manifest.get('format')!r})")
+    lays = list(layouts)
+    if not lays:
+        raise KitError("장치가 하나도 없습니다")
+    for lay in lays:
+        _check_layout(lay, rules)
+
+    defs = _global_defs(b.masters)
+    tables = list(dict.fromkeys(list(b.rows) + list(load_template()["tables"])))
+    rows: dict[str, list[dict]] = {t: list(b.rows.get(t, [])) for t in tables}
+    warns: list[str] = []
+
+    if not rows["projects"]:
+        raise KitError("백업에 프로젝트 행이 없습니다")
+    tag_list = resolve_tags(len(lays), tags=tags, tag_prefix=tag_prefix,
+                            used=[r.get("tag") for r in rows["devices"] if r.get("tag")])
+
+    # 새 쪽: 기존 쪽 하나를 본보기로 복사해 양식·구조 참조를 잇고, 쪽 번호만 뒤로 붙인다.
+    pages = sorted(rows["pages"], key=lambda r: (r.get("ordinal") if isinstance(r.get("ordinal"), int) else 0))
+    if pages:
+        model_page = pages[0]
+        if model_page.get("page_setup") is not None:
+            warns.append("본보기 쪽에 page_setup이 있습니다 — 프로젝트 용지가 A4 가로가 아니면 --page-w·--page-h로 지정하세요")
+    else:
+        model_page = {**load_template()["page"], "function_node_id": None, "location_node_id": None, "frame_form_id": None}
+        warns.append("백업에 쪽이 없어 기본 쪽(A4 가로)을 만들었습니다")
+    model_name = str(model_page.get("name") or "").strip() or "imgvec"
+    base_name = page_name or (model_name if model_name.endswith("(imgvec)") else f"{model_name} (imgvec)")
+    ordinal0 = _max_int(rows["pages"], "ordinal") + 1
+    sheet0 = _max_int(rows["pages"], "sheet_no") + 1
+
+    ids = _Ids(seed, now)
+    writer = _Writer(tables, ids, defs)
+    pos, plan_warns = plan_pages([(lay["box"]["w"], lay["box"]["h"]) for lay in lays], page_w=page_w, page_h=page_h)
+    warns += plan_warns
+    page_ids: list[str] = []
+    n_new = max(p for p, _, _ in pos) + 1
+    for k in range(n_new):
+        gid, gts = ids.new()
+        page_ids.append(gid)
+        writer.rows["pages"].append({**model_page, "id": gid, "created_at": gts,
+                                     "name": base_name if n_new == 1 else f"{base_name} {k + 1}",
+                                     "ordinal": ordinal0 + k, "sheet_no": sheet0 + k,
+                                     "revisions": None, "continuation_of": None, "continuation_index": None})
+    kit = _place_devices(writer, lays, tag_list, page_ids, pos, labels=labels, describe=describe,
+                         z_start=_max_int(rows["annotations"], "z_order") + 1)
+
+    # 새 행을 기존 행 뒤에 붙인다. id가 기존과 겹치면 멈춘다 (UUIDv7이라 사실상 없지만 확인한다).
+    old_ids = {r["id"] for t in tables for r in rows[t] if isinstance(r.get("id"), str)}
+    for t in tables:
+        new = writer.rows[t]          # _Writer는 빈 목록에서 시작하므로 여기 있는 것은 모두 새 행이다
+        clash = [r["id"] for r in new if isinstance(r.get("id"), str) and r["id"] in old_ids]
+        if clash:
+            raise KitError(f"행 id가 기존 백업과 겹칩니다 ({t}: {clash[0]}) — --seed를 바꿔 다시 하세요")
+        rows[t] = rows[t] + new
+
+    project_bytes = _dump({"rows": rows})
+    masters_bytes = b.raw["masters.json"]
+    manifest = {**b.manifest, "exportedAt": ids.exported_at(),
+                "counts": {t: len(rows[t]) for t in tables},
+                "integrity": {**b.manifest.get("integrity", {}),
+                              "project.json": hashlib.sha256(project_bytes).hexdigest(),
+                              "masters.json": hashlib.sha256(masters_bytes).hexdigest()},
+                "warnings": []}
+    data = _pack(manifest, project_bytes, masters_bytes)
+    issues = verify_backup(data, rules)
+    if has_errors(issues):
+        raise KitError("합친 백업이 자체 점검을 통과하지 못했습니다: " + "; ".join(str(i) for i in issues if i.severity == "error"))
+    return KitResult(data, kit, manifest["counts"], warns, issues)
+
+
+def write_merged_backup(path: str | Path, base: bytes | str | Path | Backup, layouts: Iterable[dict], **kw: Any) -> KitResult:
+    res = merge_backup(base, layouts, **kw)
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_bytes(res.data)

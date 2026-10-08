@@ -15,6 +15,7 @@ from imgvec.dncad_backup import (
     _dump,
     build_backup,
     load_template,
+    merge_backup,
     plan_pages,
     read_backup,
     read_black_boxes,
@@ -23,7 +24,7 @@ from imgvec.dncad_backup import (
 from imgvec.dncad_rules import DEFAULT_RULES
 from imgvec.layout import SCHEMA as LAYOUT_SCHEMA
 from imgvec.model import Body, DeviceModel, Pin
-from imgvec.validate import validate
+from imgvec.validate import has_errors, validate
 
 NOW = datetime(2026, 10, 8, 9, 0, tzinfo=timezone.utc)
 
@@ -299,7 +300,7 @@ def test_cli_kit_check_and_read(tmp_path, capsys):
     out = tmp_path / "o" / "kit.dncadbak"
     assert main(["device", "kit", str(src), "-o", str(out), "--seed", "5"]) == 0
     text = capsys.readouterr().out
-    assert "장치 2개" in text and "시험용" in text
+    assert "장치 2개" in text and "새 프로젝트로 복원" in text
     assert out.exists() and out.with_suffix(".map.csv").exists()
     rows = out.with_suffix(".map.csv").read_text(encoding="utf-8-sig").splitlines()
     assert rows[0].startswith("태그") and rows[1].startswith("-ZZ01,A,a.layout.json")
@@ -310,3 +311,91 @@ def test_cli_kit_check_and_read(tmp_path, capsys):
     bad.write_bytes(edit(out.read_bytes(), lambda r: r["devices"][0].update(tag="-Z"), fix_hash=False))
     assert main(["device", "check-bak", str(bad)]) == 1
     assert main(["device", "kit", str(tmp_path / "nothing")]) == 2   # 없는 경로는 오류 종료
+
+
+# --------------------------------------------------------------------------- 합치기 (merge)
+def test_merge_adds_devices_and_keeps_everything_before():
+    """이미 있는 백업에 장치를 더한다: 기존 행·심볼·스키마 표기는 그대로, 장치와 쪽만 늘어난다."""
+    base = kit(layout("A"), layout("B")).data
+    before = read_backup(base)
+    res = merge_backup(base, [layout("C", w=192), layout("D")], seed=9, now=NOW)
+    after = read_backup(res.data)
+
+    assert len(after.rows["devices"]) == len(before.rows["devices"]) + 2
+    assert {r["id"] for r in before.rows["devices"]} <= {r["id"] for r in after.rows["devices"]}
+    assert len(read_black_boxes(after)) == len(read_black_boxes(before)) + 2
+    # 스키마 표기·전역 정의(masters.json)는 바탕 백업 그대로여야 복원이 같은 조건에서 된다
+    for key in ("schemaVersion", "apiBuild", "formatVersion", "format"):
+        assert after.manifest[key] == before.manifest[key]
+    assert after.raw["masters.json"] == before.raw["masters.json"]
+    assert after.manifest["integrity"]["masters.json"] == before.manifest["integrity"]["masters.json"]
+    assert after.manifest["counts"] == {t: len(r) for t, r in after.rows.items()}
+    assert not has_errors(verify_backup(res.data))
+
+
+def test_merge_tags_do_not_clash_with_existing_devices():
+    base = kit(layout("A"), layout("B")).data          # -ZZ01, -ZZ02
+    res = merge_backup(base, [layout("C")], seed=9, now=NOW)
+    assert [d.tag for d in res.devices] == ["-ZZ03"]
+    with pytest.raises(KitError, match="이미 있는 태그"):
+        merge_backup(base, [layout("C")], tags=["-ZZ01"], seed=9, now=NOW)
+
+
+def test_merge_appends_pages_after_the_existing_ones():
+    base = kit(layout("A")).data
+    before = read_backup(base)
+    res = merge_backup(base, [layout("C")], seed=9, now=NOW)
+    after = read_backup(res.data)
+    old_pages = {r["id"] for r in before.rows["pages"]}
+    new_pages = [r for r in after.rows["pages"] if r["id"] not in old_pages]
+    assert len(new_pages) == 1
+    assert min(r["ordinal"] for r in new_pages) > max(r["ordinal"] for r in before.rows["pages"])
+    assert min(r["sheet_no"] for r in new_pages) > max(r["sheet_no"] for r in before.rows["pages"])
+    # 쪽 틀(양식·구조 참조)은 본보기 쪽에서 물려받는다
+    model = before.rows["pages"][0]
+    for key in ("page_type", "frame_form_id", "function_node_id", "location_node_id"):
+        assert new_pages[0][key] == model[key]
+    assert new_pages[0]["name"].endswith("(imgvec)")
+
+
+def test_merge_rejects_bad_base_and_empty_input():
+    with pytest.raises(KitError, match="장치가 하나도 없습니다"):
+        merge_backup(kit().data, [])
+    bad = io.BytesIO()
+    with zipfile.ZipFile(bad, "w") as z:
+        for n, payload in (("manifest.json", {"format": "something.else"}), ("project.json", {"rows": {}}), ("masters.json", {})):
+            z.writestr(n, json.dumps(payload))
+    with pytest.raises(KitError, match="백업 형식이 아닙니다"):
+        merge_backup(bad.getvalue(), [layout()])
+
+
+def test_merge_needs_black_box_definition_in_base():
+    def drop_defs(b):
+        b.masters["globalDefinitions"] = [g for g in b.masters["globalDefinitions"] if g["key"] != "black_box"]
+    b = read_backup(kit().data)
+    drop_defs(b)
+    masters = _dump(b.masters)
+    project = b.raw["project.json"]
+    manifest = {**b.manifest, "integrity": {"project.json": hashlib.sha256(project).hexdigest(),
+                                            "masters.json": hashlib.sha256(masters).hexdigest()}}
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("manifest.json", _dump(manifest))
+        z.writestr("project.json", project)
+        z.writestr("masters.json", masters)
+    with pytest.raises(KitError, match="black_box"):
+        merge_backup(buf.getvalue(), [layout()])
+
+
+def test_merge_cli_writes_new_file_and_refuses_overwriting_the_base(tmp_path, capsys):
+    base = tmp_path / "바탕.dncadbak"
+    base.write_bytes(kit(layout("A")).data)
+    lay = tmp_path / "C.layout.json"
+    lay.write_text(json.dumps(layout("C"), ensure_ascii=False), encoding="utf-8")
+    out = tmp_path / "합침.dncadbak"
+
+    assert main(["device", "merge", str(base), str(lay), "-o", str(out)]) == 0
+    assert out.exists() and out.with_suffix(".map.csv").exists()
+    assert len(read_backup(out).rows["devices"]) == 2
+    assert read_backup(base).rows["devices"][0]["tag"] == "-ZZ01"      # 바탕 파일은 그대로
+    assert main(["device", "merge", str(base), str(lay), "-o", str(base)]) == 2

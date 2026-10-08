@@ -5,6 +5,8 @@
   02_샘플20종.dncadbak        samples/set의 샘플 20종 (--remap-lr 적용), 여러 쪽
   03_대조용_재포장.dncadbak   (--control 백업을 줄 때만) 실제 백업을 내용 그대로 다시 묶은 파일. 01이 실패할 때
                               '묶는 방식'이 문제인지 '내용'이 문제인지 가르는 대조군
+  04_합치기_실제백업+1장치.dncadbak  (--control 백업을 줄 때만) 그 실제 백업에 FA01형 장치 1개를 더한 파일.
+                              기존 내용이 그대로 남은 채 장치가 늘었는지 보는 시험 (조사서 질문 9)
   README.txt                  시험 방법과 알려 줄 것
 
 사용: python tools/make_dncad_testkit.py [--control <실제 백업.dncadbak>] [-o 폴더]
@@ -21,7 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from imgvec.device import DeviceSpec, build_device  # noqa: E402
-from imgvec.dncad_backup import MEMBERS, build_backup, read_backup, read_black_boxes, verify_backup  # noqa: E402
+from imgvec.dncad_backup import MEMBERS, build_backup, merge_backup, read_backup, read_black_boxes, verify_backup  # noqa: E402
 from imgvec.imageio import load_image  # noqa: E402
 from imgvec.layout import REMAP_LR, SCHEMA  # noqa: E402
 
@@ -42,10 +44,12 @@ imgvec이 '손으로 만든' DNCAD 백업(.dncadbak)을 DNCAD가 받아들이는
 
 [순서]
 1. 01_FA01형_한장치.dncadbak 을 새 프로젝트로 가져옵니다. (가장 작은 시험)
-2. 되면 02_샘플20종.dncadbak 도 가져옵니다.
+2. 되면 02_샘플20종.dncadbak 도 가져옵니다. (여러 장치·여러 쪽)
 3. 01이 거부되면 03_대조용_재포장.dncadbak (있을 때)을 가져옵니다.
    - 03도 거부: 파일을 '묶는 방식'이 문제입니다. (ZIP 안의 순서·압축 방식 등)
    - 03은 되고 01만 거부: 안의 '내용'이 문제입니다. 오류 문구가 단서입니다.
+4. 04_합치기_실제백업+1장치.dncadbak (있을 때)을 **새 프로젝트로** 가져옵니다.
+   바탕이 된 실제 백업의 내용이 그대로 있고 장치가 1개 늘어 있어야 합니다. (합치기 시험)
 
 [확인할 것]  (01 기준)
 - 가져오기가 끝까지 되는가? 되지 않으면 화면에 나온 오류 문구를 그대로.
@@ -54,6 +58,8 @@ imgvec이 '손으로 만든' DNCAD 백업(.dncadbak)을 DNCAD가 받아들이는
 - DNCAD의 검증(관문)을 돌리면 통과하는가? 접속점 0개 같은 오류가 나오는가?
 - 02: 장치 20개가 {pages}쪽에 나뉘어 놓이고, 각 블랙박스 위에 장치 이름 글자가 보이는가?
   (02_샘플20종.map.csv 에 태그와 샘플 이름의 대응이 있습니다)
+- 04: 바탕 백업에 있던 장치·쪽·심볼이 하나도 빠지지 않았는가? 맨 뒤에 쪽이 하나 붙고 거기에
+  새 장치(04_합치기_실제백업+1장치.map.csv 의 태그)가 놓였는가? 새 쪽의 용지·양식이 다른 쪽과 같은가?
 
 [기대 그림]
 *.기대모습-N쪽.svg 는 DNCAD에서 이렇게 보여야 한다는 그림입니다 (브라우저로 열기). 노란 사각형이 블랙박스,
@@ -84,14 +90,18 @@ def fa01_layout() -> dict:
             "box": {"w": 160, "h": 112, "w_mm": 25.0, "h_mm": 17.5}, "pins": pins, "skipped_pins": [], "issues": []}
 
 
-def preview_svgs(data: bytes) -> dict[int, str]:
-    """만든 백업을 다시 읽어 쪽마다 '이렇게 보여야 한다'는 기대 그림(SVG, 단위 좌표)을 그린다."""
+def preview_svgs(data: bytes, last: int | None = None) -> dict[int, str]:
+    """만든 백업을 다시 읽어 쪽마다 '이렇게 보여야 한다'는 기대 그림(SVG, 단위 좌표)을 그린다.
+    last를 주면 뒤쪽 그만큼만 그린다 (합치기처럼 새로 붙인 쪽만 볼 때)."""
     from xml.sax.saxutils import escape
 
     bak = read_backup(data)
     pages = [p["id"] for p in sorted(bak.rows["pages"], key=lambda p: p["ordinal"])]
+    first = len(pages) - last if last else 0
     out: dict[int, str] = {}
     for k, pid in enumerate(pages):
+        if k < first:
+            continue
         parts = ['<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 1900 1344" font-family="sans-serif">',
                  '<rect x="0" y="0" width="1900" height="1344" fill="#fff" stroke="#999" stroke-width="2"/>',
                  f'<text x="20" y="36" font-size="22" fill="#888">기대 모습 {k + 1}쪽 — DNCAD에서 가져온 결과와 견주어 보세요 (단위 좌표)</text>']
@@ -152,8 +162,24 @@ def main() -> int:
 
     lines = [f"01  장치 1개, 접속점 {one.devices[0].pins}개", f"02  장치 {len(many.devices)}개, 접속점 {sum(d.pins for d in many.devices)}개, {max(d.page for d in many.devices) + 1}쪽"]
     if a.control:
-        repack(Path(a.control), out / "03_대조용_재포장.dncadbak")
+        control = Path(a.control)
+        repack(control, out / "03_대조용_재포장.dncadbak")
         lines.append("03  대조용: 실제 백업을 내용 그대로 다시 묶음")
+        base = read_backup(control)
+        merged = merge_backup(base, [fa01_layout()], page_name="imgvec 합치기 시험")
+        (out / "04_합치기_실제백업+1장치.dncadbak").write_bytes(merged.data)
+        with (out / "04_합치기_실제백업+1장치.map.csv").open("w", newline="", encoding="utf-8-sig") as fh:
+            w = csv.writer(fh)
+            w.writerow(["태그", "장치", "쪽(새 쪽 기준)", "x(단위)", "y(단위)", "폭", "높이", "접속점"])
+            for d in merged.devices:
+                w.writerow([d.tag, d.name, d.page + 1, d.x, d.y, d.w, d.h, d.pins])
+        for n, svg in preview_svgs(merged.data, last=merged.counts["pages"] - len(base.rows.get("pages", []))).items():
+            (out / f"04_합치기_실제백업+1장치.기대모습-{n}쪽.svg").write_text(svg, encoding="utf-8")
+        lines.append(f"04  합치기: {control.name} 의 장치 {len(base.rows.get('devices', []))}개 · "
+                     f"{len(base.rows.get('pages', []))}쪽 → 장치 {merged.counts['devices']}개 · {merged.counts['pages']}쪽 "
+                     f"(더한 태그 {merged.devices[0].tag})")
+        for w_ in merged.warnings:
+            lines.append("    경고: " + w_)
     (out / "README.txt").write_text(README.format(pages=max(d.page for d in many.devices) + 1), encoding="utf-8-sig")
 
     for f in sorted(out.glob("*.dncadbak")):

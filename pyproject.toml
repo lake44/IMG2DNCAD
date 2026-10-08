@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 pdf = ["pypdfium2>=4"]
+ocr = ["rapidocr-onnxruntime>=1.3"]   # 접속점 이름 읽기 (없어도 되고, 없으면 번호만 붙는다)
 dev = ["pytest>=8", "ruff>=0.5", "jsonschema>=4.20"]
 
 [project.scripts]
