@@ -120,6 +120,7 @@ def _place(placed, issues, p, side, slot, ref_offset, rules, pitch_u, moved_from
             "mirrored": None,
             "deviation_mm": round(dev, 3),
             "group": p.group,
+            **({"kind": p.kind} if p.kind != "electrical" else {}),   # 커넥터 핀 등은 심볼이 다르다
             **({"moved_from": moved_from} if moved_from else {}),
         }
     )

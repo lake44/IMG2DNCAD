@@ -21,10 +21,18 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .dncad_backup import KitError
+from .dncad_rules import CP_DEFS, normalize_kind
 from .layout import SCHEMA as LAYOUT_SCHEMA
 
 GRID = 16
 DCP_TOOL = "tool-place-device-connection-point"
+# 일반 단자가 아닌 접속점은 `key`로 심볼을 지정한다 (api-build가 tool 대신 key를 받는다).
+CP_KEYS = {k: v for k, v in CP_DEFS.items() if k != "electrical"}
+# 다만 api-build가 **블랙박스에 합류시키고 이름을 붙이는 대상은 `device_connection_point*` 뿐**이다
+# (실측 api-build.mjs: `/^device_connection_point/.test(q.key)` 두 곳). 커넥터 핀을 그대로 실으면
+# 상자에 안 붙어 별도 장치가 되고 `cpname`은 '이름 붙일 접속점 없음'으로 멈춘다. 공통 코드(9개 도면이
+# 함께 쓴다)를 고치는 일이라 여기서는 **미리 막고** 백업 길로 보낸다.
+PLAN_KINDS = ("electrical", "dual")
 
 
 def _snap(v: float) -> int:
@@ -48,7 +56,14 @@ def layout_to_ops(layout: dict, *, x: int, y: int, tag: str, start: int = 1) -> 
     ops: list[dict] = [{"op": "box", "id": tag, "x1": x0, "y1": y0, "x2": x0 + w, "y2": y0 + h, "tag": tag}]
     for i, p in enumerate(pins, start=start):
         px, py = x0 + int(p["x"]), y0 + int(p["y"])
-        place: dict[str, Any] = {"op": "place", "id": f"c{i}", "tool": DCP_TOOL, "x": px, "y": py}
+        kind = normalize_kind(p.get("kind"))
+        if kind not in PLAN_KINDS:
+            raise KitError(f"접속점 '{p.get('designation')}'의 종류 '{kind}'는 생성기 길로 보낼 수 없습니다 — "
+                           "api-build가 블랙박스에 합류·이름을 붙이는 대상은 device_connection_point* 뿐입니다"
+                           " (실측). 백업 길(`--backup`)로 보내세요")
+        key = CP_KEYS.get(kind)
+        place: dict[str, Any] = {"op": "place", "id": f"c{i}", "x": px, "y": py}
+        place["key" if key else "tool"] = key or DCP_TOOL
         if int(p.get("rotation") or 0):
             place["rot"] = int(p["rotation"])
         ops.append(place)

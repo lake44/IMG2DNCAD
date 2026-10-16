@@ -21,7 +21,7 @@ from imgvec.dncad_backup import (
     read_black_boxes,
     verify_backup,
 )
-from imgvec.dncad_rules import DEFAULT_RULES
+from imgvec.dncad_rules import DEFAULT_RULES, normalize_kind
 from imgvec.layout import SCHEMA as LAYOUT_SCHEMA
 from imgvec.model import Body, DeviceModel, Pin
 from imgvec.validate import has_errors, validate
@@ -399,3 +399,63 @@ def test_merge_cli_writes_new_file_and_refuses_overwriting_the_base(tmp_path, ca
     assert len(read_backup(out).rows["devices"]) == 2
     assert read_backup(base).rows["devices"][0]["tag"] == "-ZZ01"      # 바탕 파일은 그대로
     assert main(["device", "merge", str(base), str(lay), "-o", str(base)]) == 2
+
+
+# --------------------------------------------------------------------------- 접속점 종류 (커넥터 핀)
+def test_normalize_kind_takes_aliases_and_refuses_the_unknown():
+    assert normalize_kind(None) == "electrical" and normalize_kind("") == "electrical"
+    assert normalize_kind("커넥터") == "connector" and normalize_kind("Connector_Female") == "connector"
+    assert normalize_kind("MF") == "connector_mf" and normalize_kind("male") == "connector_male"
+    with pytest.raises(ValueError, match="알 수 없는 접속점 종류"):
+        normalize_kind("헛것")
+
+
+def test_backup_writes_connector_pins_with_their_own_definition():
+    """커넥터 핀은 일반 단자와 심볼이 다르다 — 부품의 전역 정의가 달라야 한다."""
+    pins = [pin("1", "top", 1), dict(pin("X1", "top", 2), kind="connector"),
+            dict(pin("X2", "top", 3), kind="dual")]
+    b = read_backup(kit(layout(pins=pins)).data)
+    key_of = {g["oldDefinitionId"]: g["key"] for g in b.masters["globalDefinitions"]}
+    got = sorted(key_of[c["definition_id"]] for c in b.rows["components"])
+    assert got == ["black_box", "connector_pin_female", "device_connection_point",
+                   "device_connection_point_dual"]
+    # 커넥터 핀도 블랙박스의 접속점으로 읽힌다
+    assert [q.designation for q in read_black_boxes(b)[0].pins] == ["1", "X1", "X2"]
+
+
+def test_backup_says_which_kinds_the_template_cannot_draw():
+    """묶인 템플릿(실측 40개 정의)에는 커넥터 암핀까지만 있다. 수핀·암수핀은 생성기 길(방식 A)로 간다."""
+    with pytest.raises(KitError, match="connector_pin_male"):
+        kit(layout(pins=[dict(pin("X1", "top", 1), kind="connector_male")]))
+
+
+def test_backup_refuses_an_unknown_pin_kind():
+    with pytest.raises(ValueError, match="알 수 없는 접속점 종류"):
+        kit(layout(pins=[dict(pin("1", "top", 1), kind="헛것")]))
+
+
+def test_plan_ops_name_the_symbol_only_when_it_is_not_a_plain_terminal():
+    from imgvec.dncad_plan import layout_to_ops
+
+    lay = layout(pins=[pin("1", "top", 1), dict(pin("X1", "top", 2), kind="dual")])
+    ops = layout_to_ops(lay, x=320, y=256, tag="-ZZ01")
+    places = [o for o in ops if o["op"] == "place"]
+    assert places[0]["tool"] == "tool-place-device-connection-point" and "key" not in places[0]
+    assert places[1]["key"] == "device_connection_point_dual" and "tool" not in places[1]
+
+
+def test_validate_refuses_a_pin_kind_dncad_cannot_draw():
+    model = DeviceModel(name="X", body=Body(w=25.0, h=17.5),
+                        pins=[Pin("1", "top", 5.0, 0.0), Pin("2", "top", 10.0, 0.0, kind="헛것")])
+    assert "E-KIND" in codes(validate(model))
+
+
+def test_plan_refuses_a_connector_pin_the_generator_cannot_join():
+    """api-build는 device_connection_point* 만 상자에 합류·이름 붙인다 (실측). 미리 막는다."""
+    from imgvec.dncad_plan import layout_to_ops
+
+    lay = layout(pins=[dict(pin("X1", "top", 1), kind="connector")])
+    with pytest.raises(KitError, match="생성기 길로 보낼 수 없습니다"):
+        layout_to_ops(lay, x=320, y=256, tag="-ZZ01")
+    ops = layout_to_ops(layout(pins=[dict(pin("A", "top", 1), kind="dual")]), x=320, y=256, tag="-ZZ01")
+    assert [o for o in ops if o["op"] == "place"][0]["key"] == "device_connection_point_dual"

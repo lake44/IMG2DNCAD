@@ -59,6 +59,7 @@ imgvec device run 그림.png --pin-pitch-mm 5.08 --merge-into 작업중.dncadbak
 imgvec device auto 그림.png --name MY-DEVICE --pin-pitch-mm 5.08   # → 그림.spec.json + 그림.pins.csv
 imgvec device auto 그림.png --try-bodies                           # 그림에 액자가 있을 때 (PDF 매뉴얼 캡처)
 imgvec device auto 사진.png --from-labels                          # 제품 실물 사진 — 이름(번호)에서 자리를 정한다
+imgvec device auto 그림.png --connectors                           # 'USB connector' 글자 자리의 접속점을 커넥터 핀으로
 imgvec device pick 그림.png --edit                                  # 틀린 곳·이름을 고친다
 imgvec device build --spec 그림.spec.json -o out\MY-DEVICE          # 그대로 장치로
 imgvec device autotest samples\set                                 # 정답 있는 샘플로 정확도 재기
@@ -72,6 +73,10 @@ imgvec device autotest samples\set                                 # 정답 있�
 | 제품 사진 같은 일러스트 | 81/111, 헛검출 12 |
 | **샘플 합계** | **190/220 (86%)**, 헛검출 12, 변 틀림 0 |
 | **실제 도면·사진** 다섯 (변압기·안전 컨트롤러·PDF 캡처·ABB·**Pilz 실물 사진**) | **8/8 · 16/16 · 12/12 · 16/16 · 24/24, 헛검출 0 — 이름도 전부** |
+
+**속도**: 한 장을 DNCAD 백업까지 장당 평균 **9초**입니다(실측 2026-10-09, 75.4초 → 48.5초로 36% 단축).
+시간의 절반은 이름 읽기, 절반은 벡터화입니다 — 이름이 필요 없으면 `--no-names`가 장당 4~6초를 아낍니다.
+자세한 내역과 **되돌린 시도**는 `docs/속도.md`.
 
 본체 사각형은 18종 모두 5 px 안에 맞습니다(중앙값 0.5 px). 재는 자는 **변 + 변을 따라 잰 자리** —
 DNCAD 배치 명세가 실제로 쓰는 값입니다(`--xy`로 2차원 거리로도 잴 수 있습니다).
@@ -111,6 +116,7 @@ imgvec device layout out\MY-DEVICE.device.json -o out\MY-DEVICE.layout.json
 
 - **축척은 필수**입니다: `--mm-per-px`, `--ref x1 y1 x2 y2 mm`, `--body-width-mm`(본체 폭의 실제 길이), `--pin-pitch-mm`(같은 줄 접속점 간격) 중 하나.
 - 접속점 CSV 열: `name`(필수) · `side` · `offset_mm` · `x_mm`·`y_mm` · `x_px`·`y_px` · `kind` · `label` · `group` (한글 머리글 가능). 좌표계·검증 코드는 `docs/장치-모델-스키마.md`.
+- `kind`는 접속점 **종류**입니다: `electrical`(기본) · `dual` · `connector`(커넥터 암핀) · `connector_male` · `connector_mf`. `커넥터`·`female` 같은 별칭도 받고, 모르는 종류는 막습니다. 수핀·암수핀은 묶인 백업 템플릿에 정의가 없어 생성기 길(방식 A)로만 갑니다.
 - **좌표계:** 원점 = 본체 왼쪽 위, y는 아래, 단위 mm (DNCAD·SVG·그림과 같음).
 - DNCAD 블랙박스의 접속점은 **위·아래 변**만 확인되어 있습니다. 왼쪽·오른쪽 변 접속점은 `--remap-lr`로 위·아래로 옮깁니다.
 - 같은 이름의 접속점은 기본 오류입니다 (생성기 API 규칙). 기존 DNCAD 백업에는 중복이 있어 `--allow-dup-names`로 경고로 낮출 수 있습니다.
@@ -238,6 +244,9 @@ imgvec selftest            # 합성 샘플로 정확도 점검 (계획서 9장 �
 - 접속점 자동 인식(4단계)은 도면 심볼(블록도·선 그림·아이콘)에서는 빠짐없이 찾지만, 나사가 잘게 갈라지는 2열 제품 사진에서는 놓칩니다.
 - 단자 이름 읽기는 `imgvec[ocr]`을 깔아야 하고, 글자가 작거나 선에 가려지면 읽지 못할 수 있습니다 (그 자리는 번호가 붙습니다).
 - 제품 실물 사진은 `--from-labels`로 **이름에서 자리를 정합니다** (Pilz PNOZ X3 실측 24/24). 도면 심볼에는 쓰지 마세요 — 전압 표시를 단자로 오인합니다.
+- 설명 글자는 지우지 않아도 됩니다 — 단자 이름과 한 줄에 섞여 있어도 이름만 건집니다 (실측: 파나소닉 서보 드라이버 4개 → 17개). 다만 글자 인식기가 틀리게 읽은 이름(`GND`→`CND`)은 버려집니다.
+- **배선이 안 붙은 단자**(스페어·미결선)도 접속점으로 받습니다 — 줄과 격자를 정한 뒤 그 빈자리를 메웁니다 (실측: Pilz PNOZ X2.8P 14/16 → **16/16**).
+- 커넥터 핀은 '…connector'라고 적힌 글자로만 가립니다 (실측 SV1 `X1`~`X6` 6/6, 헛것 0). 글자가 없으면 모양만으로는 못 가리니 핀표 `kind` 열에 적습니다.
 
 ## 폴더
 
@@ -245,7 +254,7 @@ imgvec selftest            # 합성 샘플로 정확도 점검 (계획서 9장 �
 src/imgvec/     엔진·장치 모델·검증·배치 명세·DNCAD 백업 어댑터·자동 인식·이름 읽기·작업대·CLI
   data/         DNCAD 백업 템플릿 (tools/extract_dncad_template.py로 생성)
 tests/          pytest (222개)
-docs/           DNCAD-연동-조사서.md, 장치-모델-스키마.md, 자동-인식-성능.md, 배포.md, schema/*.json
+docs/           DNCAD-연동-조사서.md, 장치-모델-스키마.md, 자동-인식-성능.md, 속도.md, 배포.md, schema/*.json
 packaging/      PyInstaller 설정 (파이썬 없는 PC용 실행 파일)
 .github/        CI·릴리스 흐름
 samples/        set (정답 있는 20종 + README), synthetic (1단계 정확도용), real

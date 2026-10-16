@@ -28,7 +28,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
-from .dncad_rules import DEFAULT_RULES, DncadRules
+from .dncad_rules import CP_DEFS, DEFAULT_RULES, DncadRules, normalize_kind
 from .layout import SCHEMA as LAYOUT_SCHEMA
 from .validate import Issue, has_errors
 
@@ -39,6 +39,8 @@ PAGE_W, PAGE_H = 1900, 1344          # A4 가로 297 x 210 mm (6.4 단위/mm)
 MAX_MEMBER_BYTES = 256 * 1024 * 1024
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 _BLACK_BOX, _DCP = "black_box", "device_connection_point"
+_CP_KEYS = frozenset(CP_DEFS.values())
+
 
 
 class KitError(ValueError):
@@ -147,7 +149,8 @@ def read_black_boxes(b: Backup) -> list[BlackBox]:
         for i, bx in enumerate(boxes):
             bx.index, bx.count = i, len(boxes)
         for c in mine:
-            if key_of.get(c.get("definition_id")) != _DCP:
+            # 일반 단자뿐 아니라 커넥터 핀도 블랙박스의 접속점이다 (심볼만 다르다)
+            if key_of.get(c.get("definition_id")) not in _CP_KEYS:
                 continue
             c_cps, c_pls = cps.get(c["id"], []), pls.get(c["id"], [])
             if len(c_cps) != 1:
@@ -356,7 +359,7 @@ class _Writer:
 
     def pin(self, device_id: str, page_id: str, box_x: int, box_y: int, p: dict) -> None:
         """장치 접속점 1개 = 부품 + 접속점 + 배치 + 그래픽 앵커(0, 0)."""
-        cid = self.component(device_id, _DCP)
+        cid = self.component(device_id, CP_DEFS[normalize_kind(p.get("kind"))])
         cpid, ts = self.ids.new()
         self.rows["connection_points"].append({"id": cpid, "cp_type": "electrical", "ip_name": None, "ip_group": None, "created_at": ts,
                                                "designation": p["designation"], "component_id": cid, "potential_id": None})
@@ -518,6 +521,12 @@ def build_backup(
     for need in (_BLACK_BOX, _DCP):
         if need not in defs:
             raise KitError(f"템플릿의 전역 정의에 '{need}'가 없습니다")
+    for lay in lays:
+        for q in lay.get("pins") or []:
+            key = CP_DEFS[normalize_kind(q.get("kind"))]
+            if key not in defs:
+                raise KitError(f"접속점 종류 '{q.get('kind')}'를 쓰려면 템플릿에 전역 정의 '{key}'가 "
+                               "있어야 합니다 (묶인 템플릿에는 없습니다 — 생성기 길 `device plan`으로 보내세요)")
     ids = _Ids(seed, now)
     writer = _Writer(tpl["tables"], ids, defs)
     rows = writer.rows

@@ -18,6 +18,38 @@ SIDE_ALIASES = {
 }
 
 
+# 장치 접속점 종류 → DNCAD 전역 정의 key. 일반 단자와 **커넥터 핀**은 심볼이 다르다
+# (실측: 백업의 -XD51·-XD52는 장치 접속점이 0개이고 connector_pin_female 5개를 쓴다.
+#  생성기 심볼 사전 763개에는 아래 다섯이 모두 있다. 묶인 백업 템플릿(정의 40개)에는 앞 셋만 있어
+#  수핀·암수핀은 백업 길에서 막힌다 — 그때는 생성기 길(dncad_plan)로 보낸다.)
+CP_DEFS = {
+    "electrical": "device_connection_point",
+    "dual": "device_connection_point_dual",
+    "connector": "connector_pin_female",
+    "connector_male": "connector_pin_male",
+    "connector_mf": "connector_pin_mf",
+}
+CP_ALIASES = {
+    "": "electrical", "electrical": "electrical", "dcp": "electrical", "일반": "electrical",
+    "터미널": "electrical", "단자": "electrical",
+    "dual": "dual", "device_connection_point_dual": "dual", "양방향": "dual", "쌍방향": "dual",
+    "connector": "connector", "connector_female": "connector", "connector_pin_female": "connector",
+    "female": "connector", "커넥터": "connector", "커넥터핀": "connector", "암": "connector",
+    "connector_male": "connector_male", "connector_pin_male": "connector_male", "male": "connector_male",
+    "수": "connector_male", "커넥터수": "connector_male",
+    "connector_mf": "connector_mf", "connector_pin_mf": "connector_mf", "mf": "connector_mf",
+    "암수": "connector_mf",
+}
+
+
+def normalize_kind(value: str | None) -> str:
+    """접속점 종류 이름을 CP_DEFS의 열쇠로. 모르는 종류는 조용히 일반 단자로 바꾸지 않고 막는다."""
+    v = ("" if value is None else str(value)).strip().lower()
+    if v not in CP_ALIASES:
+        raise ValueError(f"알 수 없는 접속점 종류: {value!r} ({' · '.join(CP_DEFS)})")
+    return CP_ALIASES[v]
+
+
 @dataclass(frozen=True)
 class DncadRules:
     units_per_mm: float = 6.4          # 극 간격 5 mm = 32, 격자 2.5 mm = 16, 쪽 폭 297 mm = 1900

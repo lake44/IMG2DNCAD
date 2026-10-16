@@ -187,7 +187,7 @@ def cmd_run(a: argparse.Namespace) -> int:
     wb, files = run_pipeline(img, name=a.name or img.stem, preset=a.preset, out_base=base, read_names=not a.no_names,
                              mm_per_px=a.mm_per_px, body_width_mm=a.body_width_mm, pin_pitch_mm=a.pin_pitch_mm,
                              backup=a.backup, merge_into=a.merge_into, tag=_norm_tag(a.tag),
-                             try_bodies=a.try_bodies, from_labels=a.from_labels)
+                             try_bodies=a.try_bodies, from_labels=a.from_labels, connectors=a.connectors)
     print(f"{img.name} → {wb.status()}")
     for k, v in files.items():
         print(f"  {k:7} {v}")
@@ -214,7 +214,8 @@ def _write_pins_csv(spec: DeviceSpec, path: Path) -> None:
         w = csv.writer(fh)
         w.writerow(["name", "side", "offset_mm", "x_mm", "y_mm", "x_px", "y_px", "kind", "label", "group"])
         for q in spec.pins:
-            w.writerow([q.name, q.side or "", "", "", "", q.x_px, q.y_px, "", "", q.group or ""])
+            w.writerow([q.name, q.side or "", "", "", "", q.x_px, q.y_px,
+                        q.kind if q.kind != "electrical" else "", "", q.group or ""])
 
 
 def cmd_auto(a: argparse.Namespace) -> int:
@@ -223,7 +224,7 @@ def cmd_auto(a: argparse.Namespace) -> int:
     rgb = load_image(img).rgb
     spec, note = auto_spec(rgb, name=a.name or img.stem, image=img.name, preset=a.preset,
                            pin_prefix=a.pin_prefix, read_names=not a.no_names, try_bodies=a.try_bodies,
-                           from_labels=a.from_labels)
+                           from_labels=a.from_labels, connectors=a.connectors)
     if a.mm_per_px:
         spec.mm_per_px = a.mm_per_px
     elif a.body_width_mm:
@@ -371,7 +372,7 @@ def cmd_kit(a: argparse.Namespace) -> int:
     paths = _layout_paths(a.inputs)
     layouts = [json.loads(p.read_text(encoding="utf-8")) for p in paths]
     out = Path(a.output or "out/dncad_testkit.dncadbak")
-    res = write_backup(out, layouts, tag_prefix=a.tag_prefix, project_name=a.project_name, labels=not a.no_labels,
+    res = write_backup(out, layouts, tag_prefix=_norm_tag(a.tag_prefix), project_name=a.project_name, labels=not a.no_labels,
                        describe=a.describe, seed=a.seed, rules=_rules(a))
     _report_kit(out, res, _write_map_csv(out, res, [p.name for p in paths]), _KIT_NOTICE)
     return 0
@@ -409,7 +410,7 @@ def cmd_merge(a: argparse.Namespace) -> int:
     before = read_backup(a.backup)
     n_dev, n_page = len(before.rows.get("devices", [])), len(before.rows.get("pages", []))
     print(f"{a.backup}: 장치 {n_dev}개, {n_page}쪽 (스키마 {before.manifest.get('schemaVersion')}) 에 더합니다")
-    res = write_merged_backup(out, before, layouts, tag_prefix=a.tag_prefix,
+    res = write_merged_backup(out, before, layouts, tag_prefix=_norm_tag(a.tag_prefix),
                               tags=[_norm_tag(t) for t in a.tags] if a.tags else None, page_name=a.page_name,
                               labels=not a.no_labels, describe=a.describe, seed=a.seed, rules=_rules(a),
                               page_w=a.page_w, page_h=a.page_h)
@@ -553,6 +554,9 @@ def add_device_parser(sub) -> None:
                     help="본체 후보를 여럿 놓고 접속점을 가장 많이 찾는 것을 고른다 — 그림에 액자가 있을 때(PDF 캡처)")
     au.add_argument("--from-labels", action="store_true",
                     help="접속점을 자리가 아니라 **이름(번호)**에서 만든다 — 제품 실물 사진용. 도면 심볼에는 쓰지 마세요")
+    au.add_argument("--connectors", action="store_true",
+                    help="'USB connector'처럼 커넥터라고 적힌 글자 아래·위의 접속점을 커넥터 핀으로 표시한다"
+                         " (그림 전체를 한 번 더 읽어 장당 3.4~5.5초 더 걸린다. --from-labels면 늘 함께 가른다)")
     au.add_argument("--mm-per-px", type=float, help="축척: 픽셀 1개의 길이(mm)")
     au.add_argument("--body-width-mm", type=float, help="축척: 본체 폭의 실제 길이(mm)")
     au.add_argument("--pin-pitch-mm", type=float, help="축척: 같은 줄 접속점 간격(mm)")
@@ -587,6 +591,7 @@ def add_device_parser(sub) -> None:
     rn.add_argument("--no-names", action="store_true", help="접속점 옆 글자를 읽지 않고 번호만 붙인다")
     rn.add_argument("--try-bodies", action="store_true", help="본체 후보를 여럿 놓고 고른다 — 그림에 액자가 있을 때")
     rn.add_argument("--from-labels", action="store_true", help="접속점을 이름(번호)에서 만든다 — 제품 실물 사진용")
+    rn.add_argument("--connectors", action="store_true", help="'USB connector'처럼 커넥터라고 적힌 글자 아래·위의 접속점을 커넥터 핀으로 표시한다 (그림 전체를 한 번 더 읽어 장당 3.4~5.5초 더 걸린다. --from-labels면 늘 함께 가른다)")
     rn.add_argument("--tag", help="장치 태그 (기본 -ZZ01). 앞의 '-'는 없어도 붙여 줍니다 — `--tag T1` = `--tag=-T1`")
     rn.set_defaults(func=cmd_run)
 

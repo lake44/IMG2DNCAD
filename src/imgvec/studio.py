@@ -41,6 +41,7 @@ class Workbench:
     rgb: np.ndarray | None = None
     note: dict = field(default_factory=dict)
     result: BuildResult | None = None
+    vector: Any = None            # 자동 인식이 만든 벡터 — build에서 다시 만들지 않는다
     remap_lr: bool = True
     rules: DncadRules = DEFAULT_RULES
 
@@ -50,13 +51,13 @@ class Workbench:
         self.rgb = load_image(p).rgb
         self.image_path = p
         self.spec = DeviceSpec(name=name or p.stem, image=p.name, preset=preset)
-        self.note, self.result = {}, None
+        self.note, self.result, self.vector = {}, None, None
 
     def open_spec(self, path: str | Path) -> None:
         """이미 만든 명세를 불러와 이어서 손본다 (그림은 명세 옆에서 찾는다)."""
         p = Path(path)
         self.spec = DeviceSpec.load(p)
-        self.note, self.result = {}, None
+        self.note, self.result, self.vector = {}, None, None
         img = p.parent / self.spec.image if self.spec.image else None
         if img and img.exists():
             self.image_path, self.rgb = img, load_image(img).rgb
@@ -65,7 +66,7 @@ class Workbench:
 
     # ------------------------------------------------------------------ 자동 인식
     def auto_detect(self, *, pin_prefix: str = "", keep_names: bool = True, read_names: bool = True,
-                    try_bodies: bool = False, from_labels: bool = False) -> dict:
+                    try_bodies: bool = False, from_labels: bool = False, connectors: bool = False) -> dict:
         """그림만 보고 본체·접속점을 채운다.
         read_names면 접속점 옆 글자를 읽어 이름을 붙이고, keep_names면 **이미 사람이 고친 이름**을 지키지 않고
         자리 순서대로 물려준다 (읽은 이름이 있으면 그것이 이긴다)."""
@@ -74,7 +75,8 @@ class Workbench:
         old = [p.name for p in self.spec.pins]
         found, note = auto_spec(self.rgb, name=self.spec.name, image=self.spec.image,
                                 preset=self.spec.preset, pin_prefix=pin_prefix, read_names=read_names,
-                                try_bodies=try_bodies, from_labels=from_labels)
+                                try_bodies=try_bodies, from_labels=from_labels, connectors=connectors,
+                                vector=self.vector)      # 두 번째부터는 벡터를 다시 만들지 않는다
         self.spec.body_px = found.body_px
         self.spec.pins = found.pins
         if keep_names and old and not note.get("named"):
@@ -82,6 +84,7 @@ class Workbench:
                 if i < len(old):
                     p.name = old[i]
         self.note = note
+        self.vector = note.pop("vector", None)    # 그림이 그대로면 build가 이 벡터를 쓴다
         self.result = None
         return note
 
@@ -136,7 +139,7 @@ class Workbench:
             raise StudioError("접속점이 하나도 없습니다 (접속점 0개 블랙박스는 DNCAD 검증에서 막힙니다)")
         if not self.has_scale:
             raise StudioError("축척이 없습니다. mm/px · 본체 폭 · 접속점 간격 · 두 점 중 하나를 정하세요")
-        self.result = build_device(self.rgb, self.spec, rules=self.rules,
+        self.result = build_device(self.rgb, self.spec, vector=self.vector, rules=self.rules,
                                    remap_sides=REMAP_LR if self.remap_lr else None)
         return self.result
 
@@ -192,11 +195,12 @@ def run_pipeline(image: str | Path, *, name: str = "", preset: str = "auto", out
                  mm_per_px: float | None = None, body_width_mm: float | None = None, pin_pitch_mm: float | None = None,
                  backup: str | Path | None = None, merge_into: str | Path | None = None,
                  tag: str | None = None, read_names: bool = True,
-                 try_bodies: bool = False, from_labels: bool = False) -> tuple[Workbench, dict[str, Path]]:
+                 try_bodies: bool = False, from_labels: bool = False, connectors: bool = False) -> tuple[Workbench, dict[str, Path]]:
     """그림 → 자동 인식 → 장치 → (원하면) DNCAD 백업까지 한 번에. 화면 없이 도는 '한 번에' 길."""
     wb = Workbench()
     wb.open_image(image, name=name, preset=preset)
-    wb.auto_detect(read_names=read_names, try_bodies=try_bodies, from_labels=from_labels)
+    wb.auto_detect(read_names=read_names, try_bodies=try_bodies, from_labels=from_labels,
+                   connectors=connectors)
     wb.set_scale(mm_per_px=mm_per_px, body_width_mm=body_width_mm, pin_pitch_mm=pin_pitch_mm)
     wb.build()
     files: dict[str, Path] = {}

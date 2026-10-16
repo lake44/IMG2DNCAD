@@ -24,7 +24,7 @@ from typing import Any
 
 import numpy as np
 
-from .detect import PinHit, _side_axes
+from .detect import PinHit, _side_axes, lattice_fit
 
 # 단자 이름에 흔한 글자만 남긴다 (읽기 오류로 붙은 기호·공백을 턴다)
 _KEEP = re.compile(r"[^0-9A-Za-z+\-/.']")
@@ -35,6 +35,7 @@ MIN_SCORE = 0.5
 UPSCALE = 3            # 작은 글자를 키워서 읽는다
 MIN_SLICE_PX = 28      # 접속점 하나를 다시 읽을 때 자를 최소 폭
 WIDE_TEXT = 0.9        # 글자 폭이 이웃 접속점까지 거리의 이만큼을 넘으면 두 이름이 붙어 읽힌 것으로 본다
+RETRY_SCORE = 0.95     # 전체 읽기 결과가 이보다 확신이 낮으면 그 변을 띠로 다시 읽는다
 
 
 @dataclass
@@ -98,6 +99,24 @@ def read_band(rgb: np.ndarray, box: tuple[int, int, int, int], *, horizontal: bo
     return out
 
 
+def read_bands(rgb: np.ndarray, boxes: list[tuple[int, int, int, int]], *, horizontal: bool = True,
+               min_score: float = MIN_SCORE, workers: int = 4) -> list[list[TextHit]]:
+    """여러 띠를 **동시에** 읽는다 → 띠별 글자 목록.
+
+    읽기는 호출당 1.1초가 고정으로 드는데 그 대부분이 한 코어에서 도는 추론이다. 띠를 한 장으로
+    이어 붙여 한 번에 읽어도 보았으나, 캔버스가 커지면 인식기가 글자를 다르게 잘라 이름이 틀렸다
+    (`Y1` → `rossfault`). 그래서 **정확도는 그대로 두고 동시에** 읽는다.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    if not boxes:
+        return []
+    if len(boxes) == 1 or workers <= 1:
+        return [read_band(rgb, b, horizontal=horizontal, min_score=min_score) for b in boxes]
+    with ThreadPoolExecutor(max_workers=min(workers, len(boxes))) as pool:
+        return list(pool.map(lambda b: read_band(rgb, b, horizontal=horizontal, min_score=min_score), boxes))
+
+
 def _band_box(side: str, body: tuple[float, float, float, float], v_pin: float, pitch: float,
               outward: bool, u_range: tuple[float, float] | None = None) -> tuple[int, int, int, int]:
     """접속점 줄에서 바깥(또는 안쪽)으로 떨어진 글자 띠의 사각형. u_range를 주면 변의 그 토막만."""
@@ -144,24 +163,58 @@ def _match(texts: list[TextHit], us: list[float], pitch: float) -> dict[int, Tex
     return out
 
 
+def _in_box(words, box: tuple[int, int, int, int], *, horizontal: bool) -> list[TextHit]:
+    """한 번 읽어 둔 글자 목록에서 그 띠 안에 든 것만 고른다."""
+    x0, y0, x1, y1 = box
+    out: list[TextHit] = []
+    for cx, cy, w, h, text, score in words:
+        if not (x0 <= cx <= x1 and y0 <= cy <= y1):
+            continue
+        name = clean(text)
+        # 전체를 한 번에 읽으면 설명 글자가 한 덩어리로 들어온다("Safety Input 1", "Cross fault …").
+        # 단자 이름 꼴이 아니면 버린다 — 그 자리는 아래에서 좁게 다시 읽는다.
+        if not name or not NAME_OK.match(name):
+            continue
+        out.append(TextHit(cx if horizontal else cy, name, score, w if horizontal else h))
+    return out
+
+
 def read_pin_names(rgb: np.ndarray, body: tuple[float, float, float, float], hits: list[PinHit],
                    *, min_score: float = MIN_SCORE) -> dict[int, str]:
-    """접속점마다 이름을 읽는다 → {hits의 차례: 이름}. 읽지 못한 접속점은 빠진다."""
+    """접속점마다 이름을 읽는다 → {hits의 차례: 이름}. 읽지 못한 접속점은 빠진다.
+
+    그림을 **한 번만** 읽고 띠별로 걸러 쓴다 — 띠마다 따로 읽으면 호출당 1.1초가 고정으로 들어
+    변 2개짜리 그림이 4.3초였다(실측). 한 번 읽기는 1.6~2.3초다. 그래도 짝이 안 된 접속점은
+    그 자리만 좁게 **다시** 읽는다 — 지역 확대가 작은 글자에 도움이 되기 때문이다.
+    """
     if not hits or not available():
         return {}
-    names: dict[int, str] = {}
-    for side in sorted({h.side for h in hits}):
-        idx = [i for i, h in enumerate(hits) if h.side == side]
+    sides = sorted({h.side for h in hits})
+    # 변마다 바깥·안쪽 띠를 모아 **한 번에** 읽는다 (변 2개면 호출 4번 → 1번)
+    geo, boxes = {}, []
+    for side in sides:
         f, _, _ = _side_axes(side, body)
+        idx = [i for i, h in enumerate(hits) if h.side == side]
         us = [f(hits[i].x_px, hits[i].y_px)[0] for i in idx]
         v_pin = float(np.median([f(hits[i].x_px, hits[i].y_px)[1] for i in idx]))
         pitch = float(np.median([hits[i].pitch for i in idx])) or 32.0
+        geo[side] = (idx, us, v_pin, pitch)
+        boxes += [_band_box(side, body, v_pin, pitch, True), _band_box(side, body, v_pin, pitch, False)]
+    flat_h = all(s in ("top", "bottom") for s in sides)
+    if flat_h:
+        read = read_bands(rgb, boxes, horizontal=True, min_score=min_score)
+    else:   # 좌·우 변은 띠가 세로라 따로 읽는다 (드물다)
+        read = [read_band(rgb, b, horizontal=(s in ("top", "bottom")), min_score=min_score)
+                for s in sides for b in (boxes[2 * sides.index(s)], boxes[2 * sides.index(s) + 1])]
+    band_texts = {s: (read[2 * i], read[2 * i + 1]) for i, s in enumerate(sides)}
+    names: dict[int, str] = {}
+    for side in sides:
+        idx, us, v_pin, pitch = geo[side]
         horizontal = side in ("top", "bottom")
         picked: dict[int, TextHit] = {}
         best_key: tuple[int, int] | None = None
-        for outward in (True, False):                      # 변에 가까운 쪽(바깥)을 먼저 본다
-            box = _band_box(side, body, v_pin, pitch, outward)
-            got = _match(read_band(rgb, box, horizontal=horizontal, min_score=min_score), us, pitch)
+        for outward, texts in zip((True, False), band_texts[side]):   # 변에 가까운 쪽(바깥)을 먼저 본다
+            got = _match(texts, us, pitch)
             key = (len(got), 1 if outward else 0)          # 많이 짝지은 쪽, 같으면 변에 가까운 쪽
             if got and (best_key is None or key > best_key):
                 best_key, picked = key, got
@@ -202,10 +255,19 @@ def read_pin_names(rgb: np.ndarray, body: tuple[float, float, float, float], hit
 
 
 # =============================================================================== 이름으로 자리를 정한다
-NAME_OK = re.compile(r"^[A-Za-z]{0,2}[0-9]{1,3}[A-Za-z]?$|^PE$|^[+-]$", re.I)
+NAME_OK = re.compile(r"^[A-Za-z]{0,2}[0-9]{1,3}[A-Za-z]?'?$|^(PE|GND|FG|SG|N|L)'?$|^[+-]$", re.I)
 LABEL_ROW_TOL = 10        # 글자를 같은 줄로 묶을 세로 허용 (px)
 LABEL_MAX_GAP = 0.5       # 이름 줄이 변에서 이만큼(본체 높이 대비) 안에 있어야 한다
 LABEL_SNAP = 12           # 구멍이 이만큼 안에 있으면 그 자리로 당긴다
+LABEL_ROWS_PER_SIDE = 2   # 변마다 **변에 가까운** 이만큼의 줄만 단자 이름으로 본다 (2열 단자대까지)
+LABEL_MIN_FIT = 0.5       # 남은 이름 자리가 한 격자 위에 이만큼은 맞아야 한다
+# 전원·모터 단자는 한 글자다 (U V W · R S T · L N · P · B · E). 이름으로 자리를 정할 때만 받는다 —
+# 자리로 찾는 길(`read_pin_names`)에서 받으면 설명 글자의 낱자가 이름으로 들어온다.
+SOLO_OK = re.compile(r"^[BEGKLMNPRSTUVW]'?$")
+
+
+def _name_ok(q: str) -> bool:
+    return bool(NAME_OK.match(q) or SOLO_OK.match(q))
 
 
 def read_words(rgb: np.ndarray, box: tuple[float, float, float, float] | None = None,
@@ -234,9 +296,50 @@ def read_words(rgb: np.ndarray, box: tuple[float, float, float, float] | None = 
     return out
 
 
-def _label_rows(rgb, body, tol: float = LABEL_ROW_TOL):
+# 커넥터 핀은 단자 이름 대신 **무슨 커넥터인지** 적힌다 (실측: SV1의 X1~X6 자리에
+# 'USB connector' · 'RS232/485 connector' · 'Safety function connector' · 'Interface connector' ·
+# 'Encoder connection'). 그 글자의 x 범위에 든 접속점은 일반 단자가 아니라 커넥터 핀이다.
+CONNECTOR_WORDS = re.compile(r"connect|커넥터|플러그|plug|socket", re.I)
+
+
+def connector_spans(rgb: np.ndarray, body: tuple[float, float, float, float],
+                    words: list | None = None) -> list[tuple[float, float, float]]:
+    """커넥터라고 적힌 글자 → (왼쪽x, 오른쪽x, 중심y). 본체에서 멀면 버린다."""
+    ws = read_words(rgb) if words is None else words
+    x0, y0, x1, y1 = body
+    h = y1 - y0
+    out = []
+    for x, y, w, _hh, t, _sc in ws:
+        if not CONNECTOR_WORDS.search(t):
+            continue
+        if x0 - 40 <= x <= x1 + 40 and y0 - 0.5 * h <= y <= y1 + 0.5 * h:
+            out.append((x - w / 2, x + w / 2, y))
+    return out
+
+
+def mark_connectors(pins: list, body: tuple[float, float, float, float],
+                    spans: list[tuple[float, float, float]]) -> int:
+    """커넥터 글자와 같은 변·같은 x에 있는 접속점의 종류를 `connector`로 → 바꾼 수.
+
+    글자가 본체 가운데선 어느 쪽에 있는지로 변을 가른다 — 위 변 단자의 설명은 위쪽 절반에 적힌다.
+    """
+    x0, y0, x1, y1 = body
+    mid = (y0 + y1) / 2
+    n = 0
+    for p in pins:
+        if p.side not in ("top", "bottom") or p.x_px is None:
+            continue
+        for sx0, sx1, sy in spans:
+            if (sy < mid if p.side == "top" else sy >= mid) and sx0 <= p.x_px <= sx1:
+                p.kind = "connector"
+                n += 1
+                break
+    return n
+
+
+def _label_rows(rgb, body, tol: float = LABEL_ROW_TOL, words: list | None = None):
     """글자를 줄로 묶는다 → [(줄 중심y, [(중심x, 폭, 글자)…])]"""
-    ws = [w for w in read_words(rgb) if body[0] - 40 <= w[0] <= body[2] + 40]
+    ws = [w for w in (read_words(rgb) if words is None else words) if body[0] - 40 <= w[0] <= body[2] + 40]
     rows: dict[float, list] = {}
     for x, y, w, _h, t, _s in sorted(ws, key=lambda z: z[1]):
         key = next((k for k in rows if abs(k - y) <= tol), None)
@@ -321,13 +424,14 @@ def _unstack(pins: list[tuple[str, float, float, str]],
         near = order[0]
         for i, p in enumerate(seq, start=1):
             u = lo + step * i
-            out.append((p[0], u, near, p[3]) if side in ("top", "bottom") else (p[0], near, u, p[3]))
+            out.append((p[0], u, near, *p[3:]) if side in ("top", "bottom") else (p[0], near, u, *p[3:]))
     return out
 
 
-def pins_from_labels(rgb: np.ndarray, prims: list, body: tuple[float, float, float, float]
-                     ) -> list[tuple[str, float, float, str]]:
-    """**이름으로 역으로 자리를 정한다** → [(변, x, y, 이름)].
+def pins_from_labels(rgb: np.ndarray, prims: list, body: tuple[float, float, float, float],
+                     words: list | None = None, spans: list | None = None
+                     ) -> list[tuple[str, float, float, str, str]]:
+    """**이름으로 역으로 자리를 정한다** → [(변, x, y, 이름, 종류)].
 
     제품 실물 사진은 단자 자리가 흐리지만 **번호는 선명하다**. 그래서 이름 줄을 먼저 찾고, 거기서
     접속점을 만든다. 구멍(원)이 보이면 그 자리로 당겨 정확도를 올린다.
@@ -339,15 +443,30 @@ def pins_from_labels(rgb: np.ndarray, prims: list, body: tuple[float, float, flo
         return []
     x0, y0, x1, y1 = body
     mid, height = (y0 + y1) / 2, y1 - y0
+
+    def kind_at(side: str, ux: float) -> str:
+        """커넥터 글자와 같은 변·같은 x면 커넥터 핀. **자리를 펴기 전** x로 봐야 맞는다."""
+        for sx0, sx1, sy in spans or ():
+            if (sy < mid if side == "top" else sy >= mid) and sx0 <= ux <= sx1:
+                return "connector"
+        return "electrical"
+
     holes = _hole_rows(prims)
     out: list[tuple[str, float, float, str]] = []
-    for ly, chunks in _label_rows(rgb, body):
+    rows = []
+    for ly, chunks in _label_rows(rgb, body, words=words):
         side = "top" if ly < mid else "bottom"
-        if abs(ly - (y0 if side == "top" else y1)) > LABEL_MAX_GAP * height:
+        gap = abs(ly - (y0 if side == "top" else y1))
+        if gap > LABEL_MAX_GAP * height:
             continue
-        flat = "".join(re.split(r"\s+", "".join(t for _, _, t in chunks)))
-        if not flat or not re.fullmatch(r"[A-Za-z0-9+\-/.]+", flat):
-            continue
+        rows.append((side, gap, ly, chunks))
+    # 변마다 **변에 가까운 줄**만 쓴다 — 그림 안쪽 라벨(접점표·설명)을 단자로 삼지 않는다.
+    keep_rows = []
+    for which in ("top", "bottom"):
+        mine = sorted((r for r in rows if r[0] == which), key=lambda r: r[1])
+        keep_rows += mine[:LABEL_ROWS_PER_SIDE]
+    for side, _gap, ly, chunks in keep_rows:
+
         # 이름은 단자의 **바깥쪽**에 적힌다 — 위 단자는 이름이 구멍 아래, 아래 단자는 구멍 위
         best = None
         for hy, hxs in holes:
@@ -356,17 +475,39 @@ def pins_from_labels(rgb: np.ndarray, prims: list, body: tuple[float, float, flo
             d = abs(hy - ly)
             if d < 0.25 * height and (best is None or d < best[0]):
                 best = (d, hy, hxs)
-        # 이름 하나가 몇 글자인가 — 이미 따로 떨어진 짧은 조각에서 배운다.
-        # 다 붙어 있으면(`A1B113`) 그 줄에 보이는 구멍 수로 나눈다.
+        # 한 줄에 단자 이름과 설명이 섞인다("L1 L2 L3 … USB connector"). 덩어리마다 이름 꼴만 건진다.
+        # 이름 하나가 몇 글자인지는 그 줄에서 **따로 떨어진 짧은 이름**에게 배운다. 한 글자에게는 배우지
+        # 않는다 — `U`로 배우면 설명 글자까지 한 글자씩 쪼개 이름으로 삼는다 (실측: SV1 아래 변).
         pieces = [q for _, _, t in chunks for q in re.split(r"\s+", t) if q]
-        solo = [len(q) for q in pieces if len(q) <= 3]
-        if solo:
-            k = min(solo)
-            counts = [max(1, round(len("".join(re.split(r"\s+", t))) / k)) for _, _, t in chunks]
-        elif best:
-            counts = _allot([w for _, w, _ in chunks], len(best[2]))
-        else:
+        solo = [len(q) for q in pieces if _name_ok(q) and 2 <= len(q) <= 3]
+        k = min(solo) if solo else 0
+        got: list[tuple[str, float]] = []
+        for cx, w, t in chunks:
+            parts = [q for q in re.split(r"\s+", t) if q]
+            seq = parts
+            if k and not all(_name_ok(q) for q in parts):   # 붙어 읽힌 덩어리(`142434`)를 쪼갠다
+                n = int(round(len("".join(parts)) / k))
+                sp = _split_chunk(t, n) if n >= 2 else None
+                if sp and all(_name_ok(q) for q in sp):
+                    seq = sp
+            step = w / len(seq)
+            got += [(q, cx - w / 2 + step * (i + 0.5)) for i, q in enumerate(seq) if _name_ok(q)]
+        if len(got) >= 3:
+            got.sort(key=lambda z: z[1])
+            fit, _p = lattice_fit(np.array([u for _q, u in got]), x1 - x0)
+            if fit >= LABEL_MIN_FIT:
+                py0 = best[1] if best else ly
+                for q, ux in got:
+                    if best:
+                        nearest = min(best[2], key=lambda c: abs(c - ux))
+                        if abs(nearest - ux) <= LABEL_SNAP:
+                            ux = nearest
+                    out.append((side, float(ux), float(py0), q, kind_at(side, ux)))
+                continue
+        # 이름 꼴이 하나도 안 나오면 줄이 통째로 붙어 읽힌 것이다(`A1B113`) — 보이는 구멍 수로 나눈다.
+        if not best:
             continue
+        counts = _allot([w for _, w, _ in chunks], len(best[2]))
         names: list[str] = []
         xs: list[float] = []
         ok = True
@@ -379,13 +520,11 @@ def pins_from_labels(rgb: np.ndarray, prims: list, body: tuple[float, float, flo
             for i, part in enumerate(parts):
                 names.append(part)
                 xs.append(left + step * (i + 0.5))
-        if not ok or len(names) < 3 or not all(NAME_OK.match(nm) for nm in names):
+        if not ok or len(names) < 3 or not all(_name_ok(nm) for nm in names):
             continue
-        py = best[1] if best else ly
         for nm, ux in zip(names, xs):
-            if best:
-                nearest = min(best[2], key=lambda c: abs(c - ux))
-                if abs(nearest - ux) <= LABEL_SNAP:
-                    ux = nearest
-            out.append((side, float(ux), float(py), nm))
+            nearest = min(best[2], key=lambda c: abs(c - ux))
+            if abs(nearest - ux) <= LABEL_SNAP:
+                ux = nearest
+            out.append((side, float(ux), float(best[1]), nm, kind_at(side, ux)))
     return _unstack(out, body)

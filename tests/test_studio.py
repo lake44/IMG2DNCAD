@@ -165,3 +165,31 @@ def test_spec_from_studio_is_the_same_shape_as_a_handmade_one(tmp_path, wb):
     again = DeviceSpec.load(path)
     assert again.to_dict()["schema"] == "device-spec/1.0"
     assert all(p.side in ("top", "bottom", "left", "right") for p in again.pins)
+
+
+def test_vector_is_made_once_and_reused(wb, monkeypatch):
+    """같은 그림을 다시 인식하거나 장치를 만들 때 벡터화를 되풀이하지 않는다 (실측 20.3초 → 6.0초)."""
+    from imgvec import device as device_mod
+
+    calls = []
+    real = device_mod.convert_image
+
+    def counted(rgb, params=None, **kw):
+        calls.append(1)
+        return real(rgb, params, **kw)
+
+    monkeypatch.setattr(device_mod, "convert_image", counted)
+    wb.auto_detect(read_names=False)
+    assert len(calls) == 1 and wb.vector is not None
+    wb.auto_detect(read_names=False)          # 다시 인식 — 벡터는 그대로
+    assert len(calls) == 1
+    wb.set_scale(pin_pitch_mm=5.08)
+    wb.build()                                 # 장치 만들기 — 역시 그대로
+    assert len(calls) == 1
+
+
+def test_opening_another_image_drops_the_cached_vector(wb):
+    wb.auto_detect(read_names=False)
+    assert wb.vector is not None
+    wb.open_image(IMG, name="다시", preset="lineart")
+    assert wb.vector is None                   # 그림이 바뀌면 버린다

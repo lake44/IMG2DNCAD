@@ -16,7 +16,7 @@ import numpy as np
 from . import __version__
 from .calib import Calibration, CalibrationError, from_pin_pitch, from_two_points, from_width, manual
 from .detect import PinHit, detect_body, detect_device, detect_pins, name_pins
-from .dncad_rules import DEFAULT_RULES, DncadRules, normalize_side
+from .dncad_rules import DEFAULT_RULES, DncadRules, normalize_kind, normalize_side
 from .geom import Circle, Primitive, sample_primitive, scale_primitive
 from .layout import dncad_layout
 from .model import Body, DeviceModel
@@ -32,6 +32,13 @@ SPEC_SCHEMA = "device-spec/1.0"
 
 class DeviceBuildError(ValueError):
     pass
+
+
+def _kind(value: str | None, i: int) -> str:
+    try:
+        return normalize_kind(value)
+    except ValueError as e:
+        raise DeviceBuildError(f"명세의 {i}번째 접속점: {e}") from e
 
 
 @dataclass
@@ -95,7 +102,7 @@ class DeviceSpec:
             pins.append(
                 PinSpec(
                     name=str(p["name"]), side=side, offset_mm=p.get("offset_mm"), x_mm=p.get("x_mm"), y_mm=p.get("y_mm"),
-                    x_px=p.get("x_px"), y_px=p.get("y_px"), kind=str(p.get("kind", "electrical")),
+                    x_px=p.get("x_px"), y_px=p.get("y_px"), kind=_kind(p.get("kind"), i),
                     label=str(p.get("label", "")), group=str(p.get("group", "")), line=i,
                 )
             )
@@ -342,7 +349,7 @@ def label_map(rgb: np.ndarray, preset: str = "auto") -> tuple[np.ndarray, str]:
 def auto_spec(rgb: np.ndarray, *, name: str = "", image: str | None = None, preset: str = "auto",
               vector: VectorResult | None = None, pin_prefix: str = "",
               read_names: bool = True, try_bodies: bool = False,
-              from_labels: bool = False) -> tuple[DeviceSpec, dict]:
+              from_labels: bool = False, connectors: bool = False) -> tuple[DeviceSpec, dict]:
     """그림만 보고 명세 초안을 만든다 (본체·접속점 자동). 둘째 값은 무엇을 어떻게 찾았는지 적은 쪽지.
 
     read_names면 접속점 옆 글자를 읽어 원본 이름을 붙인다 (엔진이 없으면 번호를 그대로 둔다).
@@ -350,6 +357,9 @@ def auto_spec(rgb: np.ndarray, *, name: str = "", image: str | None = None, pres
     있을 때(PDF 매뉴얼 캡처) 쓴다. 액자가 없는 그림에서는 안쪽 사각형이 잡음을 끌어들여 더 나쁘다.
     from_labels면 접속점을 자리가 아니라 **이름(번호)에서** 만든다 — 제품 실물 사진처럼 자리는 흐려도
     번호는 선명할 때 쓴다. 도면 심볼에는 쓰지 않는다 (전압 표시를 단자로 오인한다).
+    'USB connector'처럼 **커넥터라고 적힌 글자** 아래·위의 접속점은 일반 단자가 아니라 커넥터 핀으로
+    표시한다. 이름 줄로 찾는 길(from_labels)은 그림 글자를 이미 읽으므로 늘 함께 가른다. 자리로 찾는
+    길에서는 connectors를 켤 때만 — 그림 전체를 한 번 더 읽어야 해서 **장당 3.4~5.5초** 든다(실측).
     축척은 그림만으로는 알 수 없다 — 명세를 쓰고 나서 사람이 scale을 채워야 한다.
     """
     H, W = rgb.shape[:2]
@@ -361,19 +371,32 @@ def auto_spec(rgb: np.ndarray, *, name: str = "", image: str | None = None, pres
     else:
         body, source = detect_body(vec.prims, (W, H)), "auto-rect"
         found = detect_pins(vec.prims, labels, body, (W, H)) if body else []
-    note: dict = {"size_px": [W, H], "preset": vec.kind, "body_source": source if body else "image"}
+    note: dict = {"size_px": [W, H], "preset": vec.kind, "body_source": source if body else "image",
+                  "vector": vec}          # 뒤따르는 build_device가 다시 벡터화하지 않게 넘긴다
     if body is None:
         body = (0.0, 0.0, float(W), float(H))
         found = detect_pins(vec.prims, labels, body, (W, H))
+    # 그림의 글자는 한 번만 읽고 (이름 줄 찾기 · 커넥터 글자 찾기) 둘이 나눠 쓴다
+    words = ocr.read_words(rgb) if ocr.available() and (from_labels or (read_names and connectors)) else None
+    spans = ocr.connector_spans(rgb, body, words) if words is not None else []
+
+    def _kinds(pins: list[PinSpec]) -> None:
+        n = ocr.mark_connectors(pins, body, spans)
+        if n:
+            note["connectors"] = n
+
     if from_labels:
-        found_by_name = ocr.pins_from_labels(rgb, vec.prims, body) if ocr.available() else []
+        found_by_name = ocr.pins_from_labels(rgb, vec.prims, body, words, spans) if ocr.available() else []
         if found_by_name:
-            ordered = name_pins([PinHit(sd, x, y, "label", 0.0, 1.0) for sd, x, y, _nm in found_by_name])
+            ordered = name_pins([PinHit(sd, x, y, "label", 0.0, 1.0) for sd, x, y, _nm, _kd in found_by_name])
             by_pos = {(h.side, round(h.x_px, 1), round(h.y_px, 1)): h for h in ordered}
             rows = sorted(found_by_name, key=lambda t: list(by_pos).index((t[0], round(t[1], 1), round(t[2], 1)))
                           if (t[0], round(t[1], 1), round(t[2], 1)) in by_pos else 0)
-            pins = [PinSpec(name=nm, side=sd, x_px=round(x, 1), y_px=round(y, 1), line=i)
-                    for i, (sd, x, y, nm) in enumerate(rows, start=1)]
+            pins = [PinSpec(name=nm, side=sd, x_px=round(x, 1), y_px=round(y, 1), kind=kd, line=i)
+                    for i, (sd, x, y, nm, kd) in enumerate(rows, start=1)]
+            n = sum(1 for p in pins if p.kind != "electrical")
+            if n:
+                note["connectors"] = n
             note.update({"pins": len(pins), "named": len(pins), "pin_kinds": {"label": len(pins)},
                          "pitch_px": None, "source": "labels"})
             return DeviceSpec(name=name or "device", image=image,
@@ -389,6 +412,7 @@ def auto_spec(rgb: np.ndarray, *, name: str = "", image: str | None = None, pres
     pins = [PinSpec(name=read.get(i - 1) or f"{pin_prefix}{i}", side=h.side,
                     x_px=round(h.x_px, 1), y_px=round(h.y_px, 1), line=i)
             for i, h in enumerate(hits, start=1)]
+    _kinds(pins)
     note["pins"] = len(pins)
     note["named"] = len(read)
     note["pin_kinds"] = {k: sum(1 for h in hits if h.kind == k) for k in {h.kind for h in hits}}

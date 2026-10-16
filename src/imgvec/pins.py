@@ -15,7 +15,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path as FsPath
 
-from .dncad_rules import normalize_side
+from .dncad_rules import normalize_kind, normalize_side
 from .model import Pin, side_edge_point
 
 CSV_COLUMNS = ["name", "side", "offset_mm", "x_mm", "y_mm", "x_px", "y_px", "kind", "label", "group"]
@@ -47,7 +47,7 @@ class PinSpec:
     y_mm: float | None = None
     x_px: float | None = None
     y_px: float | None = None
-    kind: str = "electrical"
+    kind: str = "electrical"      # electrical · dual · connector(=female) · connector_male · connector_mf
     label: str = ""
     group: str = ""
     line: int = 0
@@ -78,6 +78,13 @@ def _canon(header: str) -> str | None:
         if h in {_norm_header(n) for n in names}:
             return key
     return None
+
+
+def _kind(s: str, line: int) -> str:
+    try:
+        return normalize_kind(s)
+    except ValueError as e:
+        raise PinsFileError(f"{line}번째 줄: {e}") from e
 
 
 def _num(s: str, line: int, col: str) -> float | None:
@@ -122,7 +129,7 @@ def parse_pins_csv(text: str) -> list[PinSpec]:
                 y_mm=_num(rec.get("y_mm", ""), i, "y_mm"),
                 x_px=_num(rec.get("x_px", ""), i, "x_px"),
                 y_px=_num(rec.get("y_px", ""), i, "y_px"),
-                kind=(rec.get("kind", "").strip() or "electrical"),
+                kind=_kind(rec.get("kind", ""), i),
                 label=rec.get("label", "").strip(),
                 group=rec.get("group", "").strip(),
                 line=i,

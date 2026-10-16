@@ -389,3 +389,30 @@ def test_thin_crossings_are_not_dots():
     for x in (120, 200, 280):                        # 변에 닿은 줄기 (폭 2)
         lab[y0 - 40:y0 + 3, x:x + 2] = 1
     assert detect.dot_candidates(lab, body) == []
+
+
+# --------------------------------------------------------------------------- 배선 없는 단자
+def test_fill_gaps_takes_an_unwired_terminal_on_the_lattice():
+    """스페어·미결선 단자는 본체 밖으로 선이 안 나간다. 그래도 접속점으로 받는다 (2026-10-09 지시).
+
+    실측: Pilz PNOZ X2.8P는 맨 오른쪽 접점 41·42만 선이 없어 16개 중 14개였다.
+    """
+    body = (100.0, 100.0, 500.0, 300.0)
+    keep = [(10.0, 150.0, 150.0, 90.0, "stub", 50.0),      # v는 바깥이 +
+            (10.0, 250.0, 250.0, 90.0, "stub", 50.0),
+            (10.0, 350.0, 350.0, 90.0, "stub", 50.0)]
+    cands = [(450.0, 115.0, "blob", 80.0),                 # 선 없는 단자 — 격자 다음 자리·같은 깊이 띠
+             (450.0, 260.0, "blob", 80.0),                 # 본체 깊숙한 설명 글자
+             (60.0, 115.0, "blob", 80.0),                  # 본체 밖 장치 이름 글자
+             (470.0, 112.0, "glyph", 80.0),                # 글자 획
+             (250.0, 112.0, "blob", 80.0)]                 # 이미 접속점이 있는 자리
+    out = detect._fill_gaps(keep, cands, "top", body, pitch=100.0, maxd=90.0, bin_px=16.0)
+    assert [round(it[1]) for it in out] == [150, 250, 350, 450]
+    assert out[-1][4] == "blob"
+
+
+def test_fill_gaps_does_nothing_without_a_lattice():
+    body = (100.0, 100.0, 500.0, 300.0)
+    keep = [(10.0, 150.0, 150.0, 90.0, "stub", 50.0)]
+    assert detect._fill_gaps(keep, [(450.0, 115.0, "blob", 80.0)], "top", body,
+                             pitch=0.0, maxd=90.0, bin_px=16.0) == keep

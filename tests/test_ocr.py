@@ -157,3 +157,77 @@ def test_hole_rows_groups_circles_by_row():
 def test_pins_from_labels_without_engine_is_empty(monkeypatch):
     monkeypatch.setattr(ocr, "available", lambda: False)
     assert ocr.pins_from_labels(np.zeros((10, 10, 3), np.uint8), [], (0, 0, 10, 10)) == []
+
+
+def test_read_bands_falls_back_to_serial_for_one_box(monkeypatch):
+    """띠가 하나면 병렬로 띄울 것도 없다."""
+    seen = []
+    monkeypatch.setattr(ocr, "read_band", lambda rgb, b, **kw: seen.append(b) or [])
+    ocr.read_bands(np.zeros((50, 50, 3), np.uint8), [(0, 0, 40, 20)])
+    assert len(seen) == 1
+
+
+@needs_engine
+def test_read_bands_matches_reading_one_by_one():
+    """동시에 읽어도 따로 읽는 것과 결과가 같아야 한다 — 속도만 얻고 정확도는 그대로."""
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (600, 300), "white")
+    d = ImageDraw.Draw(img)
+    for i, nm in enumerate(["A1", "A2", "A3"]):
+        d.text((100 + 120 * i, 40), nm, fill="black")
+    for i, nm in enumerate(["B1", "B2", "B3"]):
+        d.text((100 + 120 * i, 220), nm, fill="black")
+    rgb = np.asarray(img)
+    boxes = [(60, 25, 560, 70), (60, 205, 560, 250)]
+    one = [ocr.read_band(rgb, b) for b in boxes]
+    many = ocr.read_bands(rgb, boxes)
+    assert [[t.text for t in r] for r in many] == [[t.text for t in r] for r in one]
+
+
+def test_name_ok_plus_solo_accepts_one_letter_power_terminals():
+    """전원·모터 단자는 한 글자다 (U V W · P N · B). 이름으로 자리를 정할 때만 받는다."""
+    for good in ("U", "V", "W", "P", "B", "L", "N"):
+        assert ocr._name_ok(good), good
+    for bad in ("A", "C", "X", "Y", "Safety"):
+        assert not ocr._name_ok(bad), bad
+
+
+def test_pins_from_labels_leaves_description_text_out(monkeypatch):
+    """한 줄에 단자 이름과 설명이 섞여도 이름만 남는다 (실측: SV1 아래 변 'U W P N B GND'' + 'Interface connector')."""
+    monkeypatch.setattr(ocr, "available", lambda: True)
+    words = [(109, 261, 8, 10, "U", .9), (175, 261, 9, 10, "W", .9), (226, 261, 4, 10, "P", .9),
+             (259, 261, 8, 10, "N", .9), (292, 261, 7, 10, "B", .9), (342, 261, 23, 10, "GND'", .9),
+             (441, 261, 82, 10, "Interface connector", .9), (541, 261, 42, 10, "connector", .9),
+             (641, 261, 82, 10, "Encoder connection", .9)]
+    monkeypatch.setattr(ocr, "read_words", lambda rgb, *a, **k: words)
+    out = ocr.pins_from_labels(np.zeros((320, 740, 3), np.uint8), [], (59.0, 40.0, 708.0, 289.0))
+    assert [p[3] for p in out] == ["U", "W", "P", "N", "B", "GND'"]
+    assert all(p[0] == "bottom" for p in out)
+
+
+def test_pins_from_labels_splits_only_the_glued_chunk(monkeypatch):
+    """'142434' 옆에 이미 따로 읽힌 '42 B2 A2'가 있다 — 붙은 것만 쪼갠다 (실측: PZ1 아래 변)."""
+    monkeypatch.setattr(ocr, "available", lambda: True)
+    words = [(318, 304, 78, 12, "142434", .9), (377, 304, 26, 12, "42", .9),
+             (400, 304, 21, 12, "B2", .9), (428, 304, 20, 12, "A2", .9)]
+    monkeypatch.setattr(ocr, "read_words", lambda rgb, *a, **k: words)
+    out = ocr.pins_from_labels(np.zeros((400, 500, 3), np.uint8), [], (259.0, 16.0, 449.0, 383.0))
+    assert [p[3] for p in out] == ["14", "24", "34", "42", "B2", "A2"]
+
+
+def test_connector_spans_mark_only_the_pins_under_the_word():
+    """커넥터라고 적힌 글자의 x 범위·같은 변에 든 접속점만 커넥터 핀이다 (실측: SV1 X1~X6)."""
+    from imgvec.pins import PinSpec
+
+    body = (59.0, 40.0, 708.0, 289.0)
+    words = [(441, 78, 62, 10, "USB connector", .9), (641, 261, 82, 10, "Encoder connection", .9),
+             (109, 64, 9, 10, "L1", .9)]
+    spans = ocr.connector_spans(np.zeros((320, 740, 3), np.uint8), body, words)
+    assert len(spans) == 2
+    pins = [PinSpec(name="X1", side="top", x_px=423.0, y_px=50.0),
+            PinSpec(name="L1", side="top", x_px=109.0, y_px=64.0),
+            PinSpec(name="X6", side="bottom", x_px=624.0, y_px=279.0),
+            PinSpec(name="X3", side="bottom", x_px=441.0, y_px=279.0)]   # 글자는 위 변 것이다
+    assert ocr.mark_connectors(pins, body, spans) == 2
+    assert [p.kind for p in pins] == ["connector", "electrical", "connector", "electrical"]

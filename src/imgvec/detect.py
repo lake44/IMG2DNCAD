@@ -443,10 +443,48 @@ def _row_score(row, span: float) -> tuple[float, float]:
     return len(row) * evenness * (0.3 + 0.7 * spread) * (0.5 + 0.5 * alike) * kind_w, pitch
 
 
-def _is_second_row(cand: tuple[float, list, float], head: tuple[float, list, float]) -> bool:
+def _fill_gaps(keep, cands, side: str, body: Box, pitch: float, maxd: float, bin_px: float):
+    """격자 빈자리에 단서가 있으면 접속점으로 받는다 — **배선이 안 붙은 단자**다.
+
+    단자는 스페어이거나 아직 결선 전이라 본체 밖으로 선이 안 나가기도 한다. 그래도 장치 안에는
+    접속점으로 **반드시 있어야 한다**(2026-10-09 레이크님). 줄기(배선)만 단서로 삼으면 그런 단자를
+    통째로 버린다 — 실측: Pilz PNOZ X2.8P는 맨 오른쪽 접점 41·42만 선이 없어 16개 중 14개였다.
+
+    그 자리의 단서는 두 문(門)에서 걸렸다 — ① 본체 오른쪽 끝이라 **오른쪽 변 소속**으로 배정되고,
+    ② 변 위에 딱 걸린 줄기는 '변선 제외' 문턱(`min_v`)에 잘린다. 그래서 여기서는 두 문을 거치지 않은
+    **모든 후보**를 본다. 대신 셋으로 좁힌다 — 글자 획이 아닐 것, **본체 변 안**일 것, 그리고 **그 줄과
+    같은 깊이 띠**(`bin_px`)일 것. 셋을 빼면 본체 안 설명 글자('PILZ SAFETY RELAY')와 바깥 장치 이름
+    글자('U12')가 격자에 우연히 맞아 접속점으로 들어온다 (실측: 둘 다 들어왔다).
+    """
+    if pitch <= 1 or not keep:
+        return keep
+    f, u0, u1 = _side_axes(side, body)
+    have = [it[1] for it in keep]
+    base, row_v = have[0], float(np.median([abs(it[0]) for it in keep]))
+    rank = {"circle": 0, "dot": 0, "blob": 1, "stub": 2}
+    off = []
+    for x, y, kind, size_ in cands:
+        if kind not in rank:
+            continue                                   # 글자 획(glyph)은 단자가 아니다
+        u, v = f(x, y)
+        if abs(v) > maxd or not (u0 <= u <= u1) or abs(abs(v) - row_v) > bin_px:
+            continue
+        d = abs(u - (base + round((u - base) / pitch) * pitch))
+        if d <= LATTICE_TOL * pitch:
+            off.append((rank[kind], abs(abs(v) - row_v), d, (v, u, x, y, kind, size_)))
+    out = list(keep)
+    for *_k, it in sorted(off, key=lambda z: z[:3]):
+        if any(abs(it[1] - u) < 0.5 * pitch for u in have):
+            continue                                   # 이미 접속점이 있는 자리
+        out.append(it)
+        have.append(it[1])
+    return sorted(out, key=lambda z: z[1])
+
+
+def _is_second_row(cand: tuple, head: tuple) -> bool:
     """둘째 줄이 진짜 2열 단자인가. 글자 줄은 간격·개수·꼴 중 하나는 어긋난다."""
-    s, keep, pitch = cand
-    s0, keep0, pitch0 = head
+    s, keep, pitch = cand[0], cand[1], cand[2]
+    s0, keep0, pitch0 = head[0], head[1], head[2]
     if s < SECOND_ROW_FRAC * s0:
         return False
     if abs(pitch - pitch0) > SECOND_ROW_PITCH_TOL * pitch0:
@@ -496,7 +534,7 @@ def detect_pins(prims: list[Primitive], labels: np.ndarray | None, body: Box, si
                 if it[1] - keep[-1][1] >= 0.5 * pitch:
                     keep.append(it)
             if len(keep) >= min_pins:
-                rows.append((s, keep, pitch))
+                rows.append((s, keep, pitch, row))
         if not rows:
             continue
         rows.sort(key=lambda t: -t[0])
@@ -504,6 +542,8 @@ def detect_pins(prims: list[Primitive], labels: np.ndarray | None, body: Box, si
         if second_row:
             picked += [t for t in rows[1:2] if _is_second_row(t, rows[0])]
         top = rows[0][0]
+        # 줄을 고른 **뒤에** 빈자리를 메운다 — 메운 것이 줄 겨루기에 끼면 잡음이 이길 수 있다
+        picked = [(s, _fill_gaps(keep, cands, side, body, pitch, maxd, bin_px), pitch) for s, keep, pitch, _row in picked]
         per_side[side] = (top, [PinHit(side, x, y, kind, pitch, s)
                                 for s, keep, pitch in picked for _, _, x, y, kind, _ in keep])
 

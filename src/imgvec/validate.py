@@ -6,13 +6,14 @@
             (기존 백업에는 중복이 있으므로 rules.allow_duplicate_designations로 경고로 낮출 수 있다)
   E-OVERLAP·W-PITCH·W-GRID  접속점 간격 32 단위(5 mm), 격자 16 단위(2.5 mm)
   W-SIDE    실측 배치는 위·아래 변(회전 0·180)뿐
+  E-KIND    접속점 종류는 DNCAD 전역 정의가 있는 다섯 가지뿐 (일반·양방향·커넥터 암/수/암수)
 """
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
 
-from .dncad_rules import DEFAULT_RULES, SIDES, DncadRules
+from .dncad_rules import CP_DEFS, DEFAULT_RULES, SIDES, DncadRules
 from .model import DeviceModel
 
 SEVERITIES = ("error", "warn", "info")
@@ -72,6 +73,8 @@ def validate(model: DeviceModel, rules: DncadRules = DEFAULT_RULES) -> list[Issu
             add("warn", "W-NAME-SPACE", "이름에 앞뒤 공백이나 줄바꿈이 있습니다", name)
         if len(name) > rules.max_designation_len:
             add("warn", "W-NAME-LEN", f"이름이 {len(name)}자로 깁니다 (기준 {rules.max_designation_len}자)", name)
+        if p.kind not in CP_DEFS:
+            add("error", "E-KIND", f"접속점 종류 '{p.kind}'를 DNCAD 심볼로 바꿀 수 없습니다 ({' · '.join(CP_DEFS)})", name)
         seen[name] = seen.get(name, 0) + 1
     for name, n in seen.items():
         if n > 1 and rules.allow_duplicate_designations:
